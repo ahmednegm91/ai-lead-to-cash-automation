@@ -1,0 +1,2 @@
+﻿snapshot_id,as_of,currency,issued_invoices,draft_invoices,payment_count,total_invoiced_usd,total_collected_usd,outstanding_usd,overdue_usd,aging_json,discrepancies_json,report_markdown,source
+SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,USD,1,0,0,0.01,0.0,0.01,0.0,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME

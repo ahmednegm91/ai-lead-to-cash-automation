@@ -1,0 +1,164 @@
+﻿workflow,node,type,connected_outputs,configuration_audited,simulation_visited
+P02 | AI Lead Qualification Engine,LeadInput,n8n-nodes-base.executeWorkflowTrigger,1,yes,yes
+P02 | AI Lead Qualification Engine,QualifyLeadAI,@n8n/n8n-nodes-langchain.googleGemini,2,yes,yes
+P02 | AI Lead Qualification Engine,ParseLeadQualification,n8n-nodes-base.code,1,yes,yes
+P02 | AI Lead Qualification Engine,QualificationEngineFailed,n8n-nodes-base.stopAndError,0,yes,yes
+P02 | AI Lead Qualification Engine,GroqBackupAI,@n8n/n8n-nodes-langchain.chainLlm,2,yes,yes
+P02 | AI Lead Qualification Engine,GroqChatModel,@n8n/n8n-nodes-langchain.lmChatGroq,0,yes,model_dependency_stubbed
+P02 | AI Lead Qualification Engine,ParseGroqQualification,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Proposal & Quotation,ProposalInput,n8n-nodes-base.executeWorkflowTrigger,1,yes,yes
+P02 | Sales Proposal & Quotation,Manual Demo Test,n8n-nodes-base.manualTrigger,1,yes,yes
+P02 | Sales Proposal & Quotation,DemoLeadInput,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Proposal & Quotation,PrepareProposalRequest,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Proposal & Quotation,HasProposalDetails,n8n-nodes-base.if,2,yes,yes
+P02 | Sales Proposal & Quotation,ReturnMissingProposalData,n8n-nodes-base.code,0,yes,yes
+P02 | Sales Proposal & Quotation,GenerateProposalAI,@n8n/n8n-nodes-langchain.chainLlm,2,yes,yes
+P02 | Sales Proposal & Quotation,GeminiProposalModel,@n8n/n8n-nodes-langchain.lmChatGoogleGemini,0,yes,model_dependency_stubbed
+P02 | Sales Proposal & Quotation,ParseProposalAI,n8n-nodes-base.code,2,yes,yes
+P02 | Sales Proposal & Quotation,GenerateProposalGroq,@n8n/n8n-nodes-langchain.chainLlm,2,yes,yes
+P02 | Sales Proposal & Quotation,GroqProposalModel,@n8n/n8n-nodes-langchain.lmChatGroq,0,yes,model_dependency_stubbed
+P02 | Sales Proposal & Quotation,ParseProposalGroq,n8n-nodes-base.code,2,yes,yes
+P02 | Sales Proposal & Quotation,BuildSafeTemplateFallback,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Proposal & Quotation,FinalizeProposalDraft,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Proposal & Quotation,PrepareProposalStorage,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Proposal & Quotation,SaveProposalDraft,n8n-nodes-base.dataTable,2,yes,yes
+P02 | Sales Proposal & Quotation,ReturnProposalResult,n8n-nodes-base.code,0,yes,yes
+P02 | Sales Proposal & Quotation,ProposalStorageFailed,n8n-nodes-base.stopAndError,0,yes,yes
+P02 | AI Lead-to-Cash Automation,GetLead,n8n-nodes-base.formTrigger,1,yes,yes
+P02 | AI Lead-to-Cash Automation,NormalizeLead,n8n-nodes-base.code,1,yes,yes
+P02 | AI Lead-to-Cash Automation,ValidateLead,n8n-nodes-base.if,2,yes,yes
+P02 | AI Lead-to-Cash Automation,FlagInvalidLead,n8n-nodes-base.set,1,yes,yes
+P02 | AI Lead-to-Cash Automation,CheckNewLead,n8n-nodes-base.dataTable,1,yes,yes
+P02 | AI Lead-to-Cash Automation,IsNewLead,n8n-nodes-base.if,2,yes,yes
+P02 | AI Lead-to-Cash Automation,FlagDuplicateLead,n8n-nodes-base.set,1,yes,yes
+P02 | AI Lead-to-Cash Automation,SaveNewLead,n8n-nodes-base.dataTable,1,yes,yes
+P02 | AI Lead-to-Cash Automation,PrepareLeadForAI,n8n-nodes-base.code,1,yes,yes
+P02 | AI Lead-to-Cash Automation,ShowLeadResult,n8n-nodes-base.form,0,yes,yes
+P02 | AI Lead-to-Cash Automation,UpdateLeadQualification,n8n-nodes-base.dataTable,1,yes,yes
+P02 | AI Lead-to-Cash Automation,ShowInvalidLeadResult,n8n-nodes-base.form,0,yes,yes
+P02 | AI Lead-to-Cash Automation,ShowDuplicateLeadResult,n8n-nodes-base.form,0,yes,yes
+P02 | AI Lead-to-Cash Automation,MarkAIQualificationFailed,n8n-nodes-base.dataTable,1,yes,yes
+P02 | AI Lead-to-Cash Automation,Form,n8n-nodes-base.form,0,yes,yes
+P02 | AI Lead-to-Cash Automation,PlanSalesFollowUp,n8n-nodes-base.code,1,yes,yes
+P02 | AI Lead-to-Cash Automation,DraftSalesFollowUp,n8n-nodes-base.code,1,yes,yes
+P02 | AI Lead-to-Cash Automation,SaveLeadFollowUpDraft,n8n-nodes-base.dataTable,1,yes,yes
+P02 | AI Lead-to-Cash Automation,CallLeadQualificationAI,n8n-nodes-base.executeWorkflow,2,yes,yes
+P02 | AI Lead-to-Cash Automation,ShouldDraftProposal,n8n-nodes-base.if,2,yes,yes
+P02 | AI Lead-to-Cash Automation,PrepareProposalPayload,n8n-nodes-base.code,1,yes,yes
+P02 | AI Lead-to-Cash Automation,CallSalesProposal,n8n-nodes-base.executeWorkflow,2,yes,yes
+P02 | AI Lead-to-Cash Automation,ManualDemoTest,n8n-nodes-base.manualTrigger,1,yes,yes
+P02 | AI Lead-to-Cash Automation,GenerateDemoLead,n8n-nodes-base.code,1,yes,yes
+P02 | AI Lead-to-Cash Automation,IsDemoExecution,n8n-nodes-base.if,2,yes,yes
+P02 | AI Lead-to-Cash Automation,Call 'P02 | Sales Pipeline & Approvals - Final',n8n-nodes-base.executeWorkflow,2,yes,yes
+P02 | AI Lead-to-Cash Automation,ProposalReadyForPipeline,n8n-nodes-base.if,2,yes,yes
+P02 | AI Lead-to-Cash Automation,MarkProposalNeedsReview,n8n-nodes-base.dataTable,1,yes,yes
+P02 | AI Lead-to-Cash Automation,MarkPipelineHandoffFailed,n8n-nodes-base.dataTable,1,yes,yes
+P02 | AI Lead-to-Cash Automation,IsDemoOnAIError,n8n-nodes-base.if,2,yes,yes
+P02 | AI Lead-to-Cash Automation,ReturnDemoResult,n8n-nodes-base.code,0,yes,yes
+P02 | Sales Pipeline & Approvals - Final,04 | Read Me,n8n-nodes-base.stickyNote,0,yes,non_executable
+P02 | Sales Pipeline & Approvals - Final,OpportunityInput,n8n-nodes-base.executeWorkflowTrigger,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,Manual Demo Test,n8n-nodes-base.manualTrigger,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,DemoOpportunityPreview,n8n-nodes-base.code,0,yes,yes
+P02 | Sales Pipeline & Approvals - Final,NormalizeOpportunityInput,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,IsOpportunityInputValid,n8n-nodes-base.if,2,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ReturnOpportunityInputError,n8n-nodes-base.code,0,yes,yes
+P02 | Sales Pipeline & Approvals - Final,FindStoredProposal,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ValidateStoredProposal,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,CanOpenOpportunity,n8n-nodes-base.if,2,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ReturnOpportunityBlocked,n8n-nodes-base.code,0,yes,yes
+P02 | Sales Pipeline & Approvals - Final,FindExistingOpportunity,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,OpportunityAlreadyExists,n8n-nodes-base.if,2,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ReturnExistingOpportunity,n8n-nodes-base.code,0,yes,yes
+P02 | Sales Pipeline & Approvals - Final,BuildNewOpportunity,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,SaveNewOpportunity,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ReturnNewOpportunity,n8n-nodes-base.code,0,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ReviewProposalForm,n8n-nodes-base.formTrigger,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,PrepareReviewRequest,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ReviewRequestValid,n8n-nodes-base.if,2,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ShowReviewBlocked,n8n-nodes-base.form,0,yes,yes
+P02 | Sales Pipeline & Approvals - Final,LoadProposalForReview,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,LoadOpportunityForReview,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,EvaluateReviewGate,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,IsReviewAllowed,n8n-nodes-base.if,2,yes,yes
+P02 | Sales Pipeline & Approvals - Final,UpdateProposalApproval,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,UpdateOpportunityApproval,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,SaveApprovalLog,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,SyncLeadCRMOnReview,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,DecisionApprovedForDocuments,n8n-nodes-base.if,2,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ApprovedDocumentHandoff,n8n-nodes-base.code,1,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ShowReviewSaved,n8n-nodes-base.form,0,yes,yes
+P02 | Sales Pipeline & Approvals - Final,Call 'P02 | Contract & Invoice Automation',n8n-nodes-base.executeWorkflow,2,yes,yes
+P02 | Sales Pipeline & Approvals - Final,ShowDocumentDraftFailed,n8n-nodes-base.form,0,yes,yes
+P02 | Contract & Invoice Automation,05 | Read Me,n8n-nodes-base.stickyNote,0,yes,non_executable
+P02 | Contract & Invoice Automation,DocumentInput,n8n-nodes-base.executeWorkflowTrigger,1,yes,yes
+P02 | Contract & Invoice Automation,Manual Demo Test,n8n-nodes-base.manualTrigger,1,yes,yes
+P02 | Contract & Invoice Automation,PreviewDocumentsOnly,n8n-nodes-base.code,0,yes,yes
+P02 | Contract & Invoice Automation,PrepareDocumentRequest,n8n-nodes-base.code,1,yes,yes
+P02 | Contract & Invoice Automation,HasDocumentReference,n8n-nodes-base.if,2,yes,yes
+P02 | Contract & Invoice Automation,ReturnInvalidDocumentRequest,n8n-nodes-base.code,0,yes,yes
+P02 | Contract & Invoice Automation,GetApprovedOpportunity,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,GetApprovedProposal,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,EvaluateDocumentEligibility,n8n-nodes-base.code,1,yes,yes
+P02 | Contract & Invoice Automation,ApprovedForDocumentDraft,n8n-nodes-base.if,2,yes,yes
+P02 | Contract & Invoice Automation,ReturnUnapprovedQuote,n8n-nodes-base.code,0,yes,yes
+P02 | Contract & Invoice Automation,GetExistingInvoiceForQuote,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,InvoiceAlreadyExists,n8n-nodes-base.if,2,yes,yes
+P02 | Contract & Invoice Automation,ReturnExistingInvoice,n8n-nodes-base.code,0,yes,yes
+P02 | Contract & Invoice Automation,GetExistingContractForQuote,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,ContractAlreadyExists,n8n-nodes-base.if,2,yes,yes
+P02 | Contract & Invoice Automation,ReturnPartialDocumentState,n8n-nodes-base.code,0,yes,yes
+P02 | Contract & Invoice Automation,BuildDraftDocuments,n8n-nodes-base.code,1,yes,yes
+P02 | Contract & Invoice Automation,SaveContractDraft,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,SaveInvoiceDraft,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,ReturnDocumentDrafts,n8n-nodes-base.code,0,yes,yes
+P02 | Contract & Invoice Automation,FinanceReleaseForm,n8n-nodes-base.formTrigger,1,yes,yes
+P02 | Contract & Invoice Automation,PrepareFinanceReview,n8n-nodes-base.code,1,yes,yes
+P02 | Contract & Invoice Automation,FinanceInputValid,n8n-nodes-base.if,2,yes,yes
+P02 | Contract & Invoice Automation,ShowFinanceBlocked,n8n-nodes-base.form,0,yes,yes
+P02 | Contract & Invoice Automation,LoadInvoiceForRelease,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,LoadContractForRelease,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,LoadOpportunityForRelease,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,EvaluateFinanceRelease,n8n-nodes-base.code,1,yes,yes
+P02 | Contract & Invoice Automation,FinanceReleaseAllowed,n8n-nodes-base.if,2,yes,yes
+P02 | Contract & Invoice Automation,ConfirmContractSignature,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,ReleaseInvoice,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Contract & Invoice Automation,ShowInvoiceReleased,n8n-nodes-base.form,0,yes,yes
+P02 | Contract & Invoice Automation,SyncLeadCRMOnInvoiceIssue,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,06 | Read Me,n8n-nodes-base.stickyNote,0,yes,non_executable
+P02 | Payment Tracking & Revenue Intelligence,PaymentInput,n8n-nodes-base.executeWorkflowTrigger,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,Manual Revenue Report,n8n-nodes-base.manualTrigger,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,TagPaymentInput,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,TagReportInput,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,RecordPaymentForm,n8n-nodes-base.formTrigger,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,TagPaymentForm,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,RevenueDashboardForm,n8n-nodes-base.formTrigger,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,TagReportForm,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,IsRevenueReport,n8n-nodes-base.if,2,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,GetInvoicesForReport,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,GetPaymentsForReport,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,BuildRevenueIntelligence,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,SaveRevenueSnapshot,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,ReturnRevenueReport,n8n-nodes-base.code,0,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,IsDashboardFormRequest,n8n-nodes-base.if,2,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,ShowRevenueDashboard,n8n-nodes-base.form,0,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,NormalizePaymentEvent,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,PaymentInputValid,n8n-nodes-base.if,2,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,BuildInvalidPaymentResult,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,GetInvoiceForPayment,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,FindDuplicatePayment,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,GetInvoicePaymentLedger,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,AssessPaymentEligibility,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,CanRecordPayment,n8n-nodes-base.if,2,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,BuildRejectedPaymentResult,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,PreparePaymentRow,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,InsertPaymentLedger,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,UpdateInvoicePaymentBalance,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,BuildRecordedPaymentResult,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,IsInvoiceFullyPaid,n8n-nodes-base.if,2,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,SyncLeadCRMOnPaid,n8n-nodes-base.dataTable,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,IsInternalPaymentForm,n8n-nodes-base.if,2,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,ShowPaymentEntryResult,n8n-nodes-base.form,0,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,ReturnPaymentEventResult,n8n-nodes-base.code,0,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,CollapseReportInvoices,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,CollapseReportPayments,n8n-nodes-base.code,1,yes,yes
+P02 | Payment Tracking & Revenue Intelligence,CollapsePaymentLedger,n8n-nodes-base.code,1,yes,yes

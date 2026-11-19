@@ -1,0 +1,1954 @@
+{
+  "name": "P02 | Contract & Invoice Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## P02 | Contract & Invoice Automation\n**Sub-workflow input:** `{ \"quote_id\":\"P02-Q-...\" }`. The draft path re-reads `P02_Opportunities` and `P02_Proposals` and refuses unapproved quotes.\n**Manual Demo Test:** read-only illustrative preview, no inserts.\n**FinanceReleaseForm:** reviewer-only internal form; requires that a signed contract has been verified *outside* this demo, an evidence reference, tax amount, and due date. This is a manual attestation, not a digital signature.\n**Tables:** P02_Contracts and P02_Invoices. Contracts and invoices remain DRAFT until finance releases them. No automatic customer emails or legal signatures.\n**Failure safety:** if only a contract saved before a failure, later reruns block to avoid duplicate documents: reconcile manually.",
+        "height": 420,
+        "width": 690
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "53401539-c6ea-4608-b631-425697c06449",
+      "name": "05 | Read Me"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        1408,
+        560
+      ],
+      "id": "be11fb3f-4dd5-45c6-a480-be83777794db",
+      "name": "DocumentInput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        992,
+        1120
+      ],
+      "id": "3ad3d74c-ca87-45da-9b57-e929d4d53f00",
+      "name": "Manual Demo Test"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const quote_id='P02-Q-DEMO-PREVIEW';\nconst lines=['# DEMO Contract Preview','Reference: '+quote_id,'Service: AI Automation','Indicative fee: USD 650.00','External signature must be verified before invoice issue.'];\nreturn {json:{demo_only:true,quote_id,contract_id:'CON-'+quote_id,invoice_id:'INV-'+quote_id,contract_status:'preview_only',invoice_status:'preview_only',subtotal_usd:650,tax_usd:null,total_due_usd:null,contract_markdown:lines.join('\\n\\n'),invoice_markdown:'# DEMO Invoice Preview\\nSubtotal: USD 650.00\\nTax: Pending finance review\\nTotal due: Not issued',message:'No rows were created by this preview.'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        1120
+      ],
+      "id": "529ce7d3-ac08-4ffb-ab93-d7d6fdcf91e2",
+      "name": "PreviewDocumentsOnly"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const quote_id=String($json.quote_id??$json.quotation?.quote_id??'').trim();\nreturn {json:{quote_id,valid:quote_id.length>5&&!quote_id.startsWith('SAMPLE'),reason:quote_id?'':'quote_id is required'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        560
+      ],
+      "id": "6413fb56-c73f-458f-b3ff-062136161677",
+      "name": "PrepareDocumentRequest"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "8b045b29-25c1-4387-868f-f67d6dc2573f",
+              "leftValue": "={{ $json.valid ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1856,
+        560
+      ],
+      "id": "18280940-a1df-419e-a794-551e5fea0b38",
+      "name": "HasDocumentReference"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'blocked',reason:$json.reason||'Invalid quote ID',draft_created:false}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        720
+      ],
+      "id": "25cb6930-c0f1-4fb3-a1e4-6ff65f956eae",
+      "name": "ReturnInvalidDocumentRequest"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Opportunities",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('PrepareDocumentRequest').first().json.quote_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        464
+      ],
+      "id": "613c2418-322e-467b-adb1-7f169689554a",
+      "name": "GetApprovedOpportunity",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Proposals",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('PrepareDocumentRequest').first().json.quote_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2320,
+        464
+      ],
+      "id": "08d2b2cd-8045-49a6-b529-97c3dd2c55e8",
+      "name": "GetApprovedProposal",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const q=$('PrepareDocumentRequest').first().json.quote_id;\nconst opp=$('GetApprovedOpportunity').first().json||{};\nconst prop=$('GetApprovedProposal').first().json||{};\nconst reasons=[];\nif(opp.quote_id!==q||prop.quote_id!==q)reasons.push('Quote not found in both proposal and pipeline');\nif(opp.approval_status!=='approved'||prop.approval_status!=='approved')reasons.push('Human sales approval is required');\nif(opp.lead_id!==prop.lead_id)reasons.push('Lead reference mismatch');\nconst fee=Number(prop.indicative_subtotal_usd);\nif(!Number.isFinite(fee)||fee<=0)reasons.push('Invalid approved subtotal');\nlet quotation={};\ntry{quotation=JSON.parse(prop.quotation_json||'{}');}catch{reasons.push('Quote JSON invalid');}\nif(quotation.currency&&quotation.currency!=='USD')reasons.push('Only USD is supported in this demo');\nif(quotation.indicative_subtotal!==null && quotation.indicative_subtotal!==undefined && Math.abs(Number(quotation.indicative_subtotal)-fee)>0.009)reasons.push('Quote subtotal mismatch');\nif(!String(prop.proposal_markdown||'').trim())reasons.push('Proposal text missing');\nreturn {json:{allowed:reasons.length===0,reason:reasons.join('; '),quote_id:q,lead_id:prop.lead_id||'',company:prop.company||'',service_needed:prop.service_needed||'',currency:'USD',service_fee_usd:fee,proposal_markdown:prop.proposal_markdown||'',quotation}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        464
+      ],
+      "id": "5cb636af-a103-48b1-a99b-71f85a6ff1ba",
+      "name": "EvaluateDocumentEligibility"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "c430ab48-856e-4af5-9048-2f5d4dbdfa85",
+              "leftValue": "={{ $json.allowed ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2784,
+        464
+      ],
+      "id": "37b6492c-3db9-4991-8c17-a09405ce5f24",
+      "name": "ApprovedForDocumentDraft"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'blocked',reason:$json.reason,quote_id:$json.quote_id,draft_created:false}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        704
+      ],
+      "id": "a95645f8-ec7f-4bcc-a0ef-c97fd3f74966",
+      "name": "ReturnUnapprovedQuote"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Invoices",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('PrepareDocumentRequest').first().json.quote_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3008,
+        320
+      ],
+      "id": "da164783-2ae1-43e9-a57e-b974fe42dad1",
+      "name": "GetExistingInvoiceForQuote",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "4c570b68-5f99-452f-8da4-65f8a3a8a156",
+              "leftValue": "={{ $json.invoice_id ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        3248,
+        320
+      ],
+      "id": "344578da-508e-4ea8-9d2a-cbe17f14115e",
+      "name": "InvoiceAlreadyExists"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{...$json,status:'already_exists',draft_created:false,message:'An invoice already exists for this quote. It was not overwritten.'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3472,
+        160
+      ],
+      "id": "54174520-ebb3-447c-85d0-35a2836dbc9d",
+      "name": "ReturnExistingInvoice"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Contracts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('PrepareDocumentRequest').first().json.quote_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3472,
+        400
+      ],
+      "id": "97a7be4f-37ec-42c8-9639-4fb5359759fa",
+      "name": "GetExistingContractForQuote",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "7ffe630c-345c-410a-a73f-d97c15783ef9",
+              "leftValue": "={{ $json.contract_id ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        3712,
+        400
+      ],
+      "id": "8afe56e8-d7d4-4dcf-be77-fdf6a423e67a",
+      "name": "ContractAlreadyExists"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'manual_reconciliation_required',contract_id:$json.contract_id,quote_id:$json.quote_id,reason:'A contract exists without a matching invoice; inspect the saved records before retrying.',draft_created:false}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3936,
+        240
+      ],
+      "id": "7cc97d30-d1c5-45d8-abf9-1351300ffe46",
+      "name": "ReturnPartialDocumentState"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d=$('EvaluateDocumentEligibility').first().json;\nconst now=new Date().toISOString();\nconst fee=Number(d.service_fee_usd).toFixed(2);\nconst contract_id='CON-'+d.quote_id;\nconst invoice_id='INV-'+d.quote_id;\nconst safe=v=>String(v??'').replace(/\\r/g,'').trim();\nconst contract=`# DRAFT Services Agreement (NOT SIGNED)\\n\\nContract ID: ${contract_id}\\nQuote ID: ${d.quote_id}\\nCustomer: ${safe(d.company)}\\nService category: ${safe(d.service_needed)}\\n\\n## Proposed scope (subject to final legal review)\\n${safe(d.proposal_markdown)}\\n\\n## Pricing\\nIndicative approved service subtotal: USD ${fee}\\nTaxes, final terms, payment milestones and third-party costs require finance/legal confirmation.\\n\\n## Signature and acceptance\\nNot signed. This draft must be independently reviewed, accepted and signed using an external process.\\n\\nNo obligation or invoice is created by this draft.`;\nconst invoice=`# DRAFT Invoice (NOT ISSUED)\\n\\nInvoice ID: ${invoice_id}\\nContract ID: ${contract_id}\\nCustomer: ${safe(d.company)}\\nService: ${safe(d.service_needed)}\\nCurrency: USD\\nSubtotal: USD ${fee}\\nTax: Not determined\\nFinal amount due: Not determined\\nIssue date: Not issued\\nDue date: Not determined\\n\\nDo not send or request payment. Await documented contract signature and authorized finance release.`;\nreturn {json:{contract_id,invoice_id,quote_id:d.quote_id,lead_id:d.lead_id,company:d.company,service_needed:d.service_needed,currency:'USD',service_fee_usd:d.service_fee_usd,subtotal_usd:d.service_fee_usd,tax_usd:null,total_due_usd:null,paid_amount_usd:0,contract_markdown:contract,invoice_markdown:invoice,contract_status:'draft_pending_signature',invoice_status:'draft_pending_review',signature_evidence_ref:'',reviewed_by:'',reviewed_at:'',issue_date:'',due_date:'',released_by:'',released_at:'',paid_at:'',created_at:now}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3936,
+        464
+      ],
+      "id": "9adb32bf-8f45-465e-a844-a9f325d5396e",
+      "name": "BuildDraftDocuments"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Contracts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "contract_id": "={{ $('BuildDraftDocuments').first().json.contract_id }}",
+            "quote_id": "={{ $('BuildDraftDocuments').first().json.quote_id }}",
+            "lead_id": "={{ $('BuildDraftDocuments').first().json.lead_id }}",
+            "company": "={{ $('BuildDraftDocuments').first().json.company }}",
+            "service_needed": "={{ $('BuildDraftDocuments').first().json.service_needed }}",
+            "currency": "={{ $('BuildDraftDocuments').first().json.currency }}",
+            "service_fee_usd": "={{ $('BuildDraftDocuments').first().json.service_fee_usd }}",
+            "contract_markdown": "={{ $('BuildDraftDocuments').first().json.contract_markdown }}",
+            "contract_status": "={{ $('BuildDraftDocuments').first().json.contract_status }}",
+            "signature_evidence_ref": "={{ $('BuildDraftDocuments').first().json.signature_evidence_ref }}",
+            "reviewed_by": "={{ $('BuildDraftDocuments').first().json.reviewed_by }}",
+            "reviewed_at": "={{ $('BuildDraftDocuments').first().json.reviewed_at }}",
+            "created_at": "={{ $('BuildDraftDocuments').first().json.created_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "contract_id",
+              "displayName": "contract_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "quote_id",
+              "displayName": "quote_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_needed",
+              "displayName": "service_needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_fee_usd",
+              "displayName": "service_fee_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contract_markdown",
+              "displayName": "contract_markdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contract_status",
+              "displayName": "contract_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "signature_evidence_ref",
+              "displayName": "signature_evidence_ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_by",
+              "displayName": "reviewed_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_at",
+              "displayName": "reviewed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4160,
+        464
+      ],
+      "id": "170b3f2a-12e7-4ea9-892e-c8b34610f738",
+      "name": "SaveContractDraft"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Invoices",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "invoice_id": "={{ $('BuildDraftDocuments').first().json.invoice_id }}",
+            "contract_id": "={{ $('BuildDraftDocuments').first().json.contract_id }}",
+            "quote_id": "={{ $('BuildDraftDocuments').first().json.quote_id }}",
+            "lead_id": "={{ $('BuildDraftDocuments').first().json.lead_id }}",
+            "company": "={{ $('BuildDraftDocuments').first().json.company }}",
+            "currency": "={{ $('BuildDraftDocuments').first().json.currency }}",
+            "subtotal_usd": "={{ $('BuildDraftDocuments').first().json.subtotal_usd }}",
+            "tax_usd": "={{ $('BuildDraftDocuments').first().json.tax_usd }}",
+            "total_due_usd": "={{ $('BuildDraftDocuments').first().json.total_due_usd }}",
+            "paid_amount_usd": "={{ $('BuildDraftDocuments').first().json.paid_amount_usd }}",
+            "invoice_status": "={{ $('BuildDraftDocuments').first().json.invoice_status }}",
+            "issue_date": "={{ $('BuildDraftDocuments').first().json.issue_date }}",
+            "due_date": "={{ $('BuildDraftDocuments').first().json.due_date }}",
+            "invoice_markdown": "={{ $('BuildDraftDocuments').first().json.invoice_markdown }}",
+            "released_by": "={{ $('BuildDraftDocuments').first().json.released_by }}",
+            "released_at": "={{ $('BuildDraftDocuments').first().json.released_at }}",
+            "paid_at": "={{ $('BuildDraftDocuments').first().json.paid_at }}",
+            "created_at": "={{ $('BuildDraftDocuments').first().json.created_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "invoice_id",
+              "displayName": "invoice_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contract_id",
+              "displayName": "contract_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "quote_id",
+              "displayName": "quote_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "subtotal_usd",
+              "displayName": "subtotal_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "tax_usd",
+              "displayName": "tax_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "total_due_usd",
+              "displayName": "total_due_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "paid_amount_usd",
+              "displayName": "paid_amount_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "invoice_status",
+              "displayName": "invoice_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "issue_date",
+              "displayName": "issue_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "due_date",
+              "displayName": "due_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "invoice_markdown",
+              "displayName": "invoice_markdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "released_by",
+              "displayName": "released_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "released_at",
+              "displayName": "released_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "paid_at",
+              "displayName": "paid_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4400,
+        464
+      ],
+      "id": "edc06d9d-0e65-422a-96ab-fe09f4c07c24",
+      "name": "SaveInvoiceDraft"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{...$('BuildDraftDocuments').first().json,status:'documents_drafted',draft_created:true,warning:'Documents were saved as drafts. No contract signed and no invoice issued.'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4624,
+        464
+      ],
+      "id": "ad96d8d6-00d9-4b4f-b51b-61892316a369",
+      "name": "ReturnDocumentDrafts"
+    },
+    {
+      "parameters": {
+        "authentication": "n8nUserAuth",
+        "requireExecuteAccess": true,
+        "formTitle": "Finance Review / Invoice Release",
+        "formDescription": "Internal only. Confirm genuine external signed-contract evidence, tax, and due date before issuing an invoice record.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Draft Invoice ID",
+              "fieldName": "invoice_id",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Finance Reviewer",
+              "fieldName": "reviewer",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Signed contract confirmed?",
+              "fieldType": "dropdown",
+              "fieldName": "signature_verified",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Yes"
+                  },
+                  {
+                    "option": "No"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "External signed contract evidence reference",
+              "fieldName": "signature_evidence_ref",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reviewed tax amount (USD)",
+              "fieldType": "number",
+              "fieldName": "tax_usd",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Due Date",
+              "fieldType": "date",
+              "fieldName": "due_date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Finance Review Notes",
+              "fieldType": "textarea",
+              "fieldName": "review_notes"
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {
+          "includeUserInOutput": true
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        1408,
+        1568
+      ],
+      "id": "f52381af-a0b8-4f06-a9e9-71378f216bcf",
+      "name": "FinanceReleaseForm"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const v=$json, s=x=>String(x??'').trim();\nconst invoice_id=s(v.invoice_id), reviewer=s(v.reviewer), evidence=s(v.signature_evidence_ref);\nconst taxStr=s(v.tax_usd), tax=Number(taxStr); const date=s(v.due_date);\nconst valid=invoice_id.length>5&&reviewer.length>1&&evidence.length>3&&s(v.signature_verified)==='Yes'&&taxStr!==''&&Number.isFinite(tax)&&tax>=0&&Math.abs(tax*100-Math.round(tax*100))<1e-6&&(/^\\d{4}-\\d{2}-\\d{2}$/.test(date) && !Number.isNaN(Date.parse(date+'T00:00:00Z')) && new Date(date+'T00:00:00Z').toISOString().slice(0,10)===date);\nreturn {json:{valid,invoice_id,reviewer,signature_evidence_ref:evidence,tax_usd:tax,due_date:date,review_notes:s(v.review_notes),reason:valid?'':'Invoice ID, reviewer, signed-contract evidence, verified tax (2 decimals), and due date are required.'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        1568
+      ],
+      "id": "0883d42e-d04a-40f6-be61-05db15361425",
+      "name": "PrepareFinanceReview"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "4ccc4d22-eaea-4b7f-947c-c0b323980432",
+              "leftValue": "={{ $json.valid ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1872,
+        1568
+      ],
+      "id": "93ca8568-a76d-4bab-ac49-45e30101300b",
+      "name": "FinanceInputValid"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Invoice NOT Released",
+        "completionMessage": "={{ $json.reason || 'Finance release blocked. Check signed contract and invoice status.' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        3264,
+        1824
+      ],
+      "id": "77ef39ef-c289-40c6-8d13-35e14307522f",
+      "name": "ShowFinanceBlocked"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Invoices",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "invoice_id",
+              "keyValue": "={{ $('PrepareFinanceReview').first().json.invoice_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2112,
+        1456
+      ],
+      "id": "9b21df81-c912-443f-959d-649b91cfa246",
+      "name": "LoadInvoiceForRelease",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Contracts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "contract_id",
+              "keyValue": "={{ $('LoadInvoiceForRelease').first().json.contract_id ?? '' }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2352,
+        1456
+      ],
+      "id": "fba3fd4e-ef6a-45ba-aaa6-94cdd53282cf",
+      "name": "LoadContractForRelease",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Opportunities",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('LoadInvoiceForRelease').first().json.quote_id ?? '' }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2592,
+        1456
+      ],
+      "id": "aa812fda-80b6-478e-ab06-670d8fb77d86",
+      "name": "LoadOpportunityForRelease",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const r=$('PrepareFinanceReview').first().json;\nconst invoice=$('LoadInvoiceForRelease').first().json||{};\nconst contract=$('LoadContractForRelease').first().json||{};\nconst opp=$('LoadOpportunityForRelease').first().json||{};\nconst reasons=[];\nif(invoice.invoice_id!==r.invoice_id)reasons.push('Invoice not found');\nif(invoice.invoice_status!=='draft_pending_review')reasons.push('Invoice is not a draft pending review');\nif(contract.contract_id!==invoice.contract_id||contract.quote_id!==invoice.quote_id)reasons.push('Linked contract not found');\nif(!['draft_pending_signature','signature_verified_by_reviewer'].includes(contract.contract_status))reasons.push('Contract not eligible for release');\nif(contract.contract_status==='signature_verified_by_reviewer' && contract.signature_evidence_ref && contract.signature_evidence_ref!==r.signature_evidence_ref)reasons.push('Stored signature evidence differs; manual review required');\nif(opp.quote_id!==invoice.quote_id||opp.approval_status!=='approved')reasons.push('Sales approval missing');\nif(!Number.isFinite(Number(invoice.subtotal_usd))||Number(invoice.subtotal_usd)<=0)reasons.push('Subtotal invalid');\nconst today=new Date().toISOString().slice(0,10);\nif(r.due_date<today)reasons.push('Due date must not be before today');\nconst total=Math.round((Number(invoice.subtotal_usd)+r.tax_usd)*100)/100;\nif(total<=0)reasons.push('Final total invalid');\nconst issuedAt=new Date().toISOString();\nconst md=`# Issued Invoice Record\\n\\nInvoice ID: ${invoice.invoice_id}\\nContract ID: ${invoice.contract_id}\\nCustomer: ${invoice.company}\\nCurrency: USD\\nSubtotal: USD ${Number(invoice.subtotal_usd).toFixed(2)}\\nReviewed tax: USD ${r.tax_usd.toFixed(2)}\\n**Total Due: USD ${total.toFixed(2)}**\\nIssue Date: ${today}\\nDue Date: ${r.due_date}\\nFinance Reviewer: ${r.reviewer}\\nExternal signed-contract evidence reference: ${r.signature_evidence_ref}\\n\\nThis is a system record, not proof of payment or of an independently verified signature.`;\nreturn {json:{...r,allowed:reasons.length===0,reason:reasons.join('; '),contract_id:invoice.contract_id,quote_id:invoice.quote_id,reviewed_at:issuedAt,issue_date:today,total_due_usd:total,invoice_markdown:md,invoice_status:'issued',contract_status:'signature_verified_by_reviewer'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2832,
+        1456
+      ],
+      "id": "e543870b-3f36-4e0c-9a45-12b5f63e6e0e",
+      "name": "EvaluateFinanceRelease"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "c1b1972f-0845-4ed0-94f2-fb9009de6cbe",
+              "leftValue": "={{ $json.allowed ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        3072,
+        1456
+      ],
+      "id": "a9fbe8dc-f0e0-4155-8a10-eecc90e795ce",
+      "name": "FinanceReleaseAllowed"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Contracts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "contract_id",
+              "keyValue": "={{ $('EvaluateFinanceRelease').first().json.contract_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "contract_status": "={{ $('EvaluateFinanceRelease').first().json.contract_status }}",
+            "signature_evidence_ref": "={{ $('EvaluateFinanceRelease').first().json.signature_evidence_ref }}",
+            "reviewed_by": "={{ $('EvaluateFinanceRelease').first().json.reviewer }}",
+            "reviewed_at": "={{ $('EvaluateFinanceRelease').first().json.reviewed_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "contract_id",
+              "displayName": "contract_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "quote_id",
+              "displayName": "quote_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_needed",
+              "displayName": "service_needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_fee_usd",
+              "displayName": "service_fee_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contract_markdown",
+              "displayName": "contract_markdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contract_status",
+              "displayName": "contract_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "signature_evidence_ref",
+              "displayName": "signature_evidence_ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_by",
+              "displayName": "reviewed_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewed_at",
+              "displayName": "reviewed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3312,
+        1408
+      ],
+      "id": "f86d59bb-b4fd-4521-bb69-35300545b2b1",
+      "name": "ConfirmContractSignature"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Invoices",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "invoice_id",
+              "keyValue": "={{ $('EvaluateFinanceRelease').first().json.invoice_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "invoice_status": "={{ $('EvaluateFinanceRelease').first().json.invoice_status }}",
+            "issue_date": "={{ $('EvaluateFinanceRelease').first().json.issue_date }}",
+            "due_date": "={{ $('EvaluateFinanceRelease').first().json.due_date }}",
+            "tax_usd": "={{ $('EvaluateFinanceRelease').first().json.tax_usd }}",
+            "total_due_usd": "={{ $('EvaluateFinanceRelease').first().json.total_due_usd }}",
+            "invoice_markdown": "={{ $('EvaluateFinanceRelease').first().json.invoice_markdown }}",
+            "released_by": "={{ $('EvaluateFinanceRelease').first().json.reviewer }}",
+            "released_at": "={{ $('EvaluateFinanceRelease').first().json.reviewed_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "invoice_id",
+              "displayName": "invoice_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contract_id",
+              "displayName": "contract_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "quote_id",
+              "displayName": "quote_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "subtotal_usd",
+              "displayName": "subtotal_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "tax_usd",
+              "displayName": "tax_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "total_due_usd",
+              "displayName": "total_due_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "paid_amount_usd",
+              "displayName": "paid_amount_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "invoice_status",
+              "displayName": "invoice_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "issue_date",
+              "displayName": "issue_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "due_date",
+              "displayName": "due_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "invoice_markdown",
+              "displayName": "invoice_markdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "released_by",
+              "displayName": "released_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "released_at",
+              "displayName": "released_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "paid_at",
+              "displayName": "paid_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3552,
+        1408
+      ],
+      "id": "49145644-660c-4072-9050-d5f86a5b7fd4",
+      "name": "ReleaseInvoice"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Invoice Record Issued",
+        "completionMessage": "={{ 'Invoice ' + $('EvaluateFinanceRelease').first().json.invoice_id + ' issued in the demo ledger. Amount USD ' + $('EvaluateFinanceRelease').first().json.total_due_usd + '. No email or payment request was sent.' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        3792,
+        1408
+      ],
+      "id": "b20068a3-53ac-4ce2-84b3-bf1db1955eda",
+      "name": "ShowInvoiceReleased"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $('LoadInvoiceForRelease').first().json.lead_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_status": "invoice_issued"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3792,
+        1552
+      ],
+      "id": "1fd667ca-5c8c-4d13-92cf-30f1474d1b7c",
+      "name": "SyncLeadCRMOnInvoiceIssue",
+      "alwaysOutputData": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Test": {
+      "main": [
+        [
+          {
+            "node": "PreviewDocumentsOnly",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DocumentInput": {
+      "main": [
+        [
+          {
+            "node": "PrepareDocumentRequest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareDocumentRequest": {
+      "main": [
+        [
+          {
+            "node": "HasDocumentReference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HasDocumentReference": {
+      "main": [
+        [
+          {
+            "node": "GetApprovedOpportunity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ReturnInvalidDocumentRequest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetApprovedOpportunity": {
+      "main": [
+        [
+          {
+            "node": "GetApprovedProposal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetApprovedProposal": {
+      "main": [
+        [
+          {
+            "node": "EvaluateDocumentEligibility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EvaluateDocumentEligibility": {
+      "main": [
+        [
+          {
+            "node": "ApprovedForDocumentDraft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ApprovedForDocumentDraft": {
+      "main": [
+        [
+          {
+            "node": "GetExistingInvoiceForQuote",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ReturnUnapprovedQuote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetExistingInvoiceForQuote": {
+      "main": [
+        [
+          {
+            "node": "InvoiceAlreadyExists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InvoiceAlreadyExists": {
+      "main": [
+        [
+          {
+            "node": "ReturnExistingInvoice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GetExistingContractForQuote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetExistingContractForQuote": {
+      "main": [
+        [
+          {
+            "node": "ContractAlreadyExists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ContractAlreadyExists": {
+      "main": [
+        [
+          {
+            "node": "ReturnPartialDocumentState",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BuildDraftDocuments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildDraftDocuments": {
+      "main": [
+        [
+          {
+            "node": "SaveContractDraft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveContractDraft": {
+      "main": [
+        [
+          {
+            "node": "SaveInvoiceDraft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveInvoiceDraft": {
+      "main": [
+        [
+          {
+            "node": "ReturnDocumentDrafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FinanceReleaseForm": {
+      "main": [
+        [
+          {
+            "node": "PrepareFinanceReview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareFinanceReview": {
+      "main": [
+        [
+          {
+            "node": "FinanceInputValid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FinanceInputValid": {
+      "main": [
+        [
+          {
+            "node": "LoadInvoiceForRelease",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ShowFinanceBlocked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LoadInvoiceForRelease": {
+      "main": [
+        [
+          {
+            "node": "LoadContractForRelease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LoadContractForRelease": {
+      "main": [
+        [
+          {
+            "node": "LoadOpportunityForRelease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LoadOpportunityForRelease": {
+      "main": [
+        [
+          {
+            "node": "EvaluateFinanceRelease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EvaluateFinanceRelease": {
+      "main": [
+        [
+          {
+            "node": "FinanceReleaseAllowed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FinanceReleaseAllowed": {
+      "main": [
+        [
+          {
+            "node": "ConfirmContractSignature",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ShowFinanceBlocked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConfirmContractSignature": {
+      "main": [
+        [
+          {
+            "node": "ReleaseInvoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReleaseInvoice": {
+      "main": [
+        [
+          {
+            "node": "SyncLeadCRMOnInvoiceIssue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SyncLeadCRMOnInvoiceIssue": {
+      "main": [
+        [
+          {
+            "node": "ShowInvoiceReleased",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

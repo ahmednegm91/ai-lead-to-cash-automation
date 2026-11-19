@@ -1,0 +1,1820 @@
+{
+  "name": "P02 | Payment Tracking & Revenue Intelligence",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## P02 | Payment Tracking & Revenue Intelligence\n**Internal payment form:** Login required; records a reported payment against an already ISSUED invoice. This does NOT charge a customer or verify money with any bank.\n**Subworkflow input:** `{ \"action\":\"payment\", \"invoice_id\":\"INV-...\", \"amount_usd\":125, \"payment_reference\":\"bank-ref-...\", \"payment_method\":\"Bank Transfer\", \"recorded_by\":\"Finance\" }` or `{ \"action\":\"report\" }`.\n**Manual Revenue Report:** one-click report using the n8n Data Tables. **RevenueDashboardForm:** logged-in, read-only HTML KPI dashboard in the browser.\n**Tables:** P02_Invoices, P02_Payments, P02_RevenueSnapshots.\n**Control:** duplicate references blocked, overpayments rejected, paid value is derived from recorded payment ledger, report flags mismatches. Production payment gateways need reconciliation, authorization and stronger transaction control.",
+        "height": 440,
+        "width": 700
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ef91aec5-97ab-44f6-ad1f-a27c549de8eb",
+      "name": "06 | Read Me"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        1408,
+        544
+      ],
+      "id": "6f653858-14c2-4854-b9d9-4312e2cbf898",
+      "name": "PaymentInput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        1184
+      ],
+      "id": "8454d888-5766-40f4-b61e-efce757f9421",
+      "name": "Manual Revenue Report"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{...$json,action:String($json.action||'payment').toLowerCase(),request_source:'subworkflow'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        544
+      ],
+      "id": "5d8ccfb6-0bfe-446a-bc0c-71e3d5e4f104",
+      "name": "TagPaymentInput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{action:'report',request_source:'manual',as_of:new Date().toISOString()}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        1184
+      ],
+      "id": "2bdf3eef-ed8e-415a-94a2-66171a7d4469",
+      "name": "TagReportInput"
+    },
+    {
+      "parameters": {
+        "authentication": "n8nUserAuth",
+        "requireExecuteAccess": true,
+        "formTitle": "Payment Entry / Recording",
+        "formDescription": "Internal finance entry. Only record externally verified receipts. Does not collect or move money.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Issued Invoice ID",
+              "fieldName": "invoice_id",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Amount Received (USD)",
+              "fieldType": "number",
+              "fieldName": "amount_usd",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Bank / Payment Reference (unique)",
+              "fieldName": "payment_reference",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Method",
+              "fieldType": "dropdown",
+              "fieldName": "payment_method",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Bank Transfer"
+                  },
+                  {
+                    "option": "Card"
+                  },
+                  {
+                    "option": "Cash"
+                  },
+                  {
+                    "option": "Other"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Payment Date",
+              "fieldType": "date",
+              "fieldName": "paid_at",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Recorded by",
+              "fieldName": "recorded_by",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {
+          "includeUserInOutput": true
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        1008,
+        1584
+      ],
+      "id": "04e606a7-b5e5-43c2-9329-7a3b84133753",
+      "name": "RecordPaymentForm"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{...$json,action:'payment',request_source:'form'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        1584
+      ],
+      "id": "0ea7124f-12e0-41fb-ba0d-ffa4581fb5a1",
+      "name": "TagPaymentForm"
+    },
+    {
+      "parameters": {
+        "authentication": "n8nUserAuth",
+        "requireExecuteAccess": true,
+        "formTitle": "P02 Revenue Dashboard",
+        "formDescription": "Private read-only dashboard. Refresh by submitting this form. No invoices or payments are edited.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Report Scope",
+              "fieldType": "dropdown",
+              "fieldName": "report_scope",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "All issued invoices"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {
+          "includeUserInOutput": true
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        1008,
+        1984
+      ],
+      "id": "101ea5d4-aca2-4bbc-9a77-d6085e904685",
+      "name": "RevenueDashboardForm"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{action:'report',request_source:'form'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        1984
+      ],
+      "id": "6cb805c0-0779-4f73-850a-a06168ec4aec",
+      "name": "TagReportForm"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "e3f83fa4-ee38-46b7-9057-d0332a8b6b6c",
+              "leftValue": "={{ $json.action === 'report' ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1920,
+        896
+      ],
+      "id": "e3438445-5e41-4ef4-8bb4-1bbd8b42bc2d",
+      "name": "IsRevenueReport"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Invoices",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": []
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2160,
+        672
+      ],
+      "id": "8314ee11-b1d8-4373-b6fb-d32b6ed43b80",
+      "name": "GetInvoicesForReport",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Payments",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": []
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2640,
+        672
+      ],
+      "id": "e33e045d-97a1-4f9b-8a46-e3e5e2eaf32d",
+      "name": "GetPaymentsForReport",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const source=$('IsRevenueReport').first().json.request_source||'manual';\nconst invoices=$('GetInvoicesForReport').all().map(x=>x.json).filter(x=>x.invoice_id&&!String(x.invoice_id).startsWith('SAMPLE'));\nconst payments=$('GetPaymentsForReport').all().map(x=>x.json).filter(x=>x.payment_id&&!String(x.payment_id).startsWith('SAMPLE')&&x.status==='recorded'&&Number(x.amount_usd)>0);\nconst money=n=>Math.round((Number(n)||0)*100)/100;\nconst paidByInvoice={};\nfor(const p of payments)paidByInvoice[p.invoice_id]=money((paidByInvoice[p.invoice_id]||0)+Number(p.amount_usd));\nconst issued=invoices.filter(i=>['issued','partially_paid','paid'].includes(i.invoice_status));\nconst draft=invoices.filter(i=>i.invoice_status==='draft_pending_review');\nconst today=new Date().toISOString().slice(0,10);\nconst as_of=new Date().toISOString();\nlet invoiced=0, received=0, outstanding=0, overdue=0;\nconst aging={'not_due':0,'1_30_days':0,'31_60_days':0,'61_plus_days':0};\nconst discrepancies=[];const overdueRows=[];\nfor(const inv of issued){\n const due=Number(inv.total_due_usd), ledgerPaid=money(paidByInvoice[inv.invoice_id]||0);\n if(!Number.isFinite(due)||due<=0){discrepancies.push('Invalid total on '+inv.invoice_id);continue;}\n invoiced+=due;received+=Math.min(due,ledgerPaid);\n const remain=money(Math.max(0,due-ledgerPaid));outstanding+=remain;\n if(Math.abs(money(inv.paid_amount_usd)-ledgerPaid)>0.009)discrepancies.push('Invoice balance / ledger mismatch: '+inv.invoice_id);\n if(ledgerPaid>due+0.009)discrepancies.push('Overpayment in payment ledger: '+inv.invoice_id);\n if(remain<=0)continue;\n if(inv.due_date&&inv.due_date<today){\n  const days=Math.floor((Date.parse(today+'T00:00:00Z')-Date.parse(inv.due_date+'T00:00:00Z'))/86400000);\n  overdue+=remain;overdueRows.push({invoice_id:inv.invoice_id,days_overdue:days,amount_usd:remain});\n  if(days<=30)aging['1_30_days']+=remain;\n  else if(days<=60)aging['31_60_days']+=remain;\n  else aging['61_plus_days']+=remain;\n }else aging.not_due+=remain;\n}\nfor(const k in aging)aging[k]=money(aging[k]);\nconst count=(n)=>Number(n).toLocaleString('en-US');\nconst fmt=n=>'USD '+money(n).toFixed(2);\nconst rows=overdueRows.sort((a,b)=>b.amount_usd-a.amount_usd).slice(0,10).map(x=>`| ${x.invoice_id} | ${x.days_overdue} | ${fmt(x.amount_usd)} |`).join('\\n')||'| None | - | - |';\nconst report=`# P02 Revenue Intelligence (Internal Demo)\\n\\nGenerated: ${as_of}\\n\\n| KPI | Value |\\n|---|---:|\\n| Issued invoices | ${count(issued.length)} |\\n| Draft invoices | ${count(draft.length)} |\\n| Recorded payments | ${count(payments.length)} |\\n| Total issued | ${fmt(invoiced)} |\\n| Collected (ledger) | ${fmt(received)} |\\n| Outstanding | ${fmt(outstanding)} |\\n| Overdue | ${fmt(overdue)} |\\n\\n## Aging\\n${Object.entries(aging).map(([k,v])=>'- '+k+': '+fmt(v)).join('\\n')}\\n\\n## Top overdue\\n| Invoice | Days overdue | Amount |\\n|---|---:|---:|\\n${rows}\\n\\n## Integrity checks\\n${discrepancies.length?discrepancies.map(x=>'- '+x).join('\\n'):'No ledger/invoice discrepancies detected.'}\\n\\n**Recorded amounts only.** This report is not bank reconciliation or financial advice.`;\nconst esc=x=>String(x??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));\nconst dashboard_html='<h1>P02 Revenue Intelligence</h1><p>As of: '+esc(as_of)+' | Currency: USD</p>'\n +'<h2>Key metrics</h2><table><thead><tr><th>KPI</th><th>Value</th></tr></thead><tbody>'\n +[['Issued invoices',issued.length],['Draft invoices',draft.length],['Recorded payments',payments.length],['Total issued',fmt(invoiced)],['Total collected',fmt(received)],['Outstanding',fmt(outstanding)],['Overdue',fmt(overdue)]].map(([k,v])=>'<tr><td>'+esc(k)+'</td><td>'+esc(v)+'</td></tr>').join('')+'</tbody></table>'\n +'<h2>Outstanding aging</h2><table><thead><tr><th>Bucket</th><th>Amount</th></tr></thead><tbody>'\n +Object.entries(aging).map(([k,v])=>'<tr><td>'+esc(k)+'</td><td>'+esc(fmt(v))+'</td></tr>').join('')+'</tbody></table>'\n +'<h2>Top overdue invoices</h2><table><thead><tr><th>Invoice</th><th>Days</th><th>Outstanding</th></tr></thead><tbody>'\n +(overdueRows.length?overdueRows.slice(0,10).map(x=>'<tr><td>'+esc(x.invoice_id)+'</td><td>'+esc(x.days_overdue)+'</td><td>'+esc(fmt(x.amount_usd))+'</td></tr>').join(''):'<tr><td>No overdue invoices</td><td>-</td><td>-</td></tr>')+'</tbody></table>'\n +'<h2>Integrity checks</h2><p>'+esc(discrepancies.length?discrepancies.join(' | '):'No ledger discrepancies detected.')+'</p>'\n +'<p>Internal recorded-ledger figures, not verified bank reconciliation.</p>';\nreturn {json:{snapshot_id:'REV-'+String($execution.id??Date.now()),as_of,currency:'USD',issued_invoices:issued.length,draft_invoices:draft.length,payment_count:payments.length,total_invoiced_usd:money(invoiced),total_collected_usd:money(received),outstanding_usd:money(outstanding),overdue_usd:money(overdue),aging_json:JSON.stringify(aging),discrepancies_json:JSON.stringify(discrepancies),report_markdown:report,report_html:dashboard_html,source,overdue_invoices:overdueRows}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        672
+      ],
+      "id": "2e940282-54b8-47e4-a4bf-0263e0ffe8d2",
+      "name": "BuildRevenueIntelligence"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_RevenueSnapshots",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "snapshot_id": "={{ $('BuildRevenueIntelligence').first().json.snapshot_id }}",
+            "as_of": "={{ $('BuildRevenueIntelligence').first().json.as_of }}",
+            "currency": "={{ $('BuildRevenueIntelligence').first().json.currency }}",
+            "issued_invoices": "={{ $('BuildRevenueIntelligence').first().json.issued_invoices }}",
+            "draft_invoices": "={{ $('BuildRevenueIntelligence').first().json.draft_invoices }}",
+            "payment_count": "={{ $('BuildRevenueIntelligence').first().json.payment_count }}",
+            "total_invoiced_usd": "={{ $('BuildRevenueIntelligence').first().json.total_invoiced_usd }}",
+            "total_collected_usd": "={{ $('BuildRevenueIntelligence').first().json.total_collected_usd }}",
+            "outstanding_usd": "={{ $('BuildRevenueIntelligence').first().json.outstanding_usd }}",
+            "overdue_usd": "={{ $('BuildRevenueIntelligence').first().json.overdue_usd }}",
+            "aging_json": "={{ $('BuildRevenueIntelligence').first().json.aging_json }}",
+            "discrepancies_json": "={{ $('BuildRevenueIntelligence').first().json.discrepancies_json }}",
+            "report_markdown": "={{ $('BuildRevenueIntelligence').first().json.report_markdown }}",
+            "source": "={{ $('BuildRevenueIntelligence').first().json.source }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "snapshot_id",
+              "displayName": "snapshot_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "as_of",
+              "displayName": "as_of",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "issued_invoices",
+              "displayName": "issued_invoices",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "draft_invoices",
+              "displayName": "draft_invoices",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "payment_count",
+              "displayName": "payment_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "total_invoiced_usd",
+              "displayName": "total_invoiced_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "total_collected_usd",
+              "displayName": "total_collected_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "outstanding_usd",
+              "displayName": "outstanding_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "overdue_usd",
+              "displayName": "overdue_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "aging_json",
+              "displayName": "aging_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "discrepancies_json",
+              "displayName": "discrepancies_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "report_markdown",
+              "displayName": "report_markdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3120,
+        672
+      ],
+      "id": "4d019d4e-dc3f-40ac-af9b-62d5815b048b",
+      "name": "SaveRevenueSnapshot"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{...$('BuildRevenueIntelligence').first().json,status:'report_generated',snapshot_saved:true}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        672
+      ],
+      "id": "f1fd200f-f66b-4da9-9713-5637b0707f58",
+      "name": "ReturnRevenueReport"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "0d1ac321-59f2-4efa-bc5a-a50bd20e3bd0",
+              "leftValue": "={{ $('BuildRevenueIntelligence').first().json.source === 'form' ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        3360,
+        528
+      ],
+      "id": "6d890642-05e2-4816-b83b-815e99450742",
+      "name": "IsDashboardFormRequest"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "showText",
+        "responseText": "={{ $('BuildRevenueIntelligence').first().json.report_html }}"
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        3600,
+        528
+      ],
+      "id": "52001257-74e2-4610-8361-062cfff4e4cd",
+      "name": "ShowRevenueDashboard"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const v=$json,s=x=>String(x??'').trim();\nconst invoice_id=s(v.invoice_id),reference=s(v.payment_reference);\nconst rawAmount=s(v.amount_usd),amount=Number(rawAmount);\nconst paid_at=s(v.paid_at)||new Date().toISOString().slice(0,10);\nconst recorded_by=s(v.recorded_by), method=s(v.payment_method)||'Other';\nconst id=s(v.payment_id)||('PAY-'+invoice_id.replace(/[^A-Za-z0-9]/g,'').slice(-28)+'-'+reference.replace(/[^A-Za-z0-9]/g,'').slice(-35));\nconst valid=invoice_id.length>5&&reference.length>=3&&recorded_by.length>1&&rawAmount!==''&&Number.isFinite(amount)&&amount>0&&Math.abs(amount*100-Math.round(amount*100))<0.000001&&(/^\\d{4}-\\d{2}-\\d{2}$/.test(paid_at) && !Number.isNaN(Date.parse(paid_at+'T00:00:00Z')) && new Date(paid_at+'T00:00:00Z').toISOString().slice(0,10)===paid_at)&&id.length>8;\nreturn {json:{valid,reason:valid?'':'Valid issued invoice ID, positive 2-decimal amount, unique reference, payment date and recorder required.',invoice_id,payment_id:id,amount_usd:amount,payment_reference:reference,payment_method:method,paid_at,recorded_by,recorded_at:new Date().toISOString(),request_source:s(v.request_source),verification_status:'manual_record_not_bank_reconciled'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        1040
+      ],
+      "id": "f1e3c0fa-ddbe-4627-8a68-2afd86be5380",
+      "name": "NormalizePaymentEvent"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "71f9f2bd-c46c-4e1c-aacc-62c44026db64",
+              "leftValue": "={{ $json.valid ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2400,
+        1040
+      ],
+      "id": "25231ba8-7b97-4017-a723-833c6ebda7ce",
+      "name": "PaymentInputValid"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'payment_rejected',reason:$json.reason||'Invalid payment entry',invoice_id:$json.invoice_id||'',request_source:$json.request_source,recorded:false}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        1264
+      ],
+      "id": "08a1d7db-85c7-420e-aa1b-4c42a1ec242a",
+      "name": "BuildInvalidPaymentResult"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Invoices",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "invoice_id",
+              "keyValue": "={{ $('NormalizePaymentEvent').first().json.invoice_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2640,
+        1024
+      ],
+      "id": "a92cce8b-be79-462c-be13-1af3d9f47bd9",
+      "name": "GetInvoiceForPayment",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Payments",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "payment_id",
+              "keyValue": "={{ $('NormalizePaymentEvent').first().json.payment_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2880,
+        1024
+      ],
+      "id": "ed4cc68e-3575-42d9-ab89-6fa67f919fa7",
+      "name": "FindDuplicatePayment",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Payments",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "invoice_id",
+              "keyValue": "={{ $('NormalizePaymentEvent').first().json.invoice_id }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3120,
+        1024
+      ],
+      "id": "a7cf74c3-16ca-49b3-924b-97d0b504c54b",
+      "name": "GetInvoicePaymentLedger",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const p=$('NormalizePaymentEvent').first().json;\nconst invoice=$('GetInvoiceForPayment').first().json||{};\nconst duplicate=$('FindDuplicatePayment').first().json||{};\nconst ledger=$('GetInvoicePaymentLedger').all().map(x=>x.json).filter(x=>x.invoice_id===p.invoice_id&&x.status==='recorded');\nconst reasons=[];\nif(ledger.some(x=>String(x.payment_reference??'').trim().toLowerCase()===p.payment_reference.toLowerCase()))reasons.push('Payment reference already recorded on this invoice');\nif(invoice.invoice_id!==p.invoice_id)reasons.push('Invoice not found');\nif(!['issued','partially_paid'].includes(invoice.invoice_status))reasons.push('Invoice not open for payment');\nif(duplicate.payment_id)reasons.push('Payment reference/id already recorded');\nconst total=Number(invoice.total_due_usd);\nif(!Number.isFinite(total)||total<=0)reasons.push('Invoice total invalid');\nconst already=Math.round(ledger.reduce((s,x)=>s+Number(x.amount_usd||0),0)*100)/100;\nconst remaining=Math.round((total-already)*100)/100;\nconst paid=Math.round((already+p.amount_usd)*100)/100;\nif(p.amount_usd>remaining+0.000001)reasons.push('Overpayment blocked; remaining USD '+Math.max(remaining,0).toFixed(2));\nif(Math.abs(Number(invoice.paid_amount_usd||0)-already)>0.009)reasons.push('Invoice/ledger mismatch; reconcile manually');\nreturn {json:{...p,allowed:reasons.length===0,reason:reasons.join('; '),quote_id:invoice.quote_id||'',currency:invoice.currency||'USD',invoice_total_usd:total,already_paid_usd:already,new_paid_amount_usd:paid,remaining_before_usd:remaining,new_invoice_status:paid>=total-0.009?'paid':'partially_paid',status:'recorded'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        1024
+      ],
+      "id": "3d29b586-7d76-4a3b-a673-d43ca0972757",
+      "name": "AssessPaymentEligibility"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "fbe54d2c-db96-41ef-a8dc-564112669dd9",
+              "leftValue": "={{ $json.allowed ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        3600,
+        1024
+      ],
+      "id": "316c7a61-0b6a-4a4f-97bf-925fdc10bc1b",
+      "name": "CanRecordPayment"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const p=$json;\nreturn {json:{status:'payment_rejected',reason:p.reason,invoice_id:p.invoice_id,payment_id:p.payment_id,request_source:p.request_source,recorded:false}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3840,
+        1264
+      ],
+      "id": "f2ee2b9b-4f72-463a-be53-fc4c2f664efc",
+      "name": "BuildRejectedPaymentResult"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d=$('AssessPaymentEligibility').first().json;\nreturn {json:{...d,verification_status:'manual_record_not_bank_reconciled',status:'recorded'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3840,
+        1008
+      ],
+      "id": "2b181720-bdcd-4162-a157-98ea1bd01435",
+      "name": "PreparePaymentRow"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Payments",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "payment_id": "={{ $('PreparePaymentRow').first().json.payment_id }}",
+            "invoice_id": "={{ $('PreparePaymentRow').first().json.invoice_id }}",
+            "quote_id": "={{ $('PreparePaymentRow').first().json.quote_id }}",
+            "amount_usd": "={{ $('PreparePaymentRow').first().json.amount_usd }}",
+            "currency": "={{ $('PreparePaymentRow').first().json.currency }}",
+            "payment_method": "={{ $('PreparePaymentRow').first().json.payment_method }}",
+            "payment_reference": "={{ $('PreparePaymentRow').first().json.payment_reference }}",
+            "paid_at": "={{ $('PreparePaymentRow').first().json.paid_at }}",
+            "recorded_by": "={{ $('PreparePaymentRow').first().json.recorded_by }}",
+            "recorded_at": "={{ $('PreparePaymentRow').first().json.recorded_at }}",
+            "verification_status": "={{ $('PreparePaymentRow').first().json.verification_status }}",
+            "status": "={{ $('PreparePaymentRow').first().json.status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "payment_id",
+              "displayName": "payment_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "invoice_id",
+              "displayName": "invoice_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "quote_id",
+              "displayName": "quote_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "amount_usd",
+              "displayName": "amount_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "payment_method",
+              "displayName": "payment_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "payment_reference",
+              "displayName": "payment_reference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "paid_at",
+              "displayName": "paid_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "recorded_by",
+              "displayName": "recorded_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "recorded_at",
+              "displayName": "recorded_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "verification_status",
+              "displayName": "verification_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4080,
+        1008
+      ],
+      "id": "e2be2a8b-a777-4260-aee9-2190b9c9e77a",
+      "name": "InsertPaymentLedger"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Invoices",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "invoice_id",
+              "keyValue": "={{ $('AssessPaymentEligibility').first().json.invoice_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "paid_amount_usd": "={{ $('AssessPaymentEligibility').first().json.new_paid_amount_usd }}",
+            "invoice_status": "={{ $('AssessPaymentEligibility').first().json.new_invoice_status }}",
+            "paid_at": "={{ $('AssessPaymentEligibility').first().json.new_invoice_status === 'paid' ? $('AssessPaymentEligibility').first().json.paid_at : '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "invoice_id",
+              "displayName": "invoice_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "contract_id",
+              "displayName": "contract_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "quote_id",
+              "displayName": "quote_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "subtotal_usd",
+              "displayName": "subtotal_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "tax_usd",
+              "displayName": "tax_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "total_due_usd",
+              "displayName": "total_due_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "paid_amount_usd",
+              "displayName": "paid_amount_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "invoice_status",
+              "displayName": "invoice_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "issue_date",
+              "displayName": "issue_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "due_date",
+              "displayName": "due_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "invoice_markdown",
+              "displayName": "invoice_markdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "released_by",
+              "displayName": "released_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "released_at",
+              "displayName": "released_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "paid_at",
+              "displayName": "paid_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4320,
+        1008
+      ],
+      "id": "d467d5a9-d91a-43bd-9d35-f3f629b99c8a",
+      "name": "UpdateInvoicePaymentBalance"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const p=$('AssessPaymentEligibility').first().json;\nreturn {json:{status:'payment_recorded',recorded:true,payment_id:p.payment_id,invoice_id:p.invoice_id,quote_id:p.quote_id,amount_usd:p.amount_usd,paid_total_usd:p.new_paid_amount_usd,invoice_total_usd:p.invoice_total_usd,invoice_status:p.new_invoice_status,request_source:p.request_source,verification_status:'manual_record_not_bank_reconciled',message:'Manual payment entry recorded. This does not verify money with any bank.'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4560,
+        1008
+      ],
+      "id": "8f3fb5e8-479b-4044-8cef-6a92efbd5f69",
+      "name": "BuildRecordedPaymentResult"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "26c20350-db13-48b0-9e39-7caaa7fd6ff7",
+              "leftValue": "={{ $('AssessPaymentEligibility').first().json.new_invoice_status }}",
+              "rightValue": "paid",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        4560,
+        864
+      ],
+      "id": "ab8a755f-3b56-4570-97c2-c005aa95c061",
+      "name": "IsInvoiceFullyPaid"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $('GetInvoiceForPayment').first().json.lead_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_status": "paid_recorded"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4784,
+        832
+      ],
+      "id": "1066cff8-220e-4f48-85e7-95e2f639d172",
+      "name": "SyncLeadCRMOnPaid",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "ac8200a0-35f3-4613-9ffc-113fbde7377f",
+              "leftValue": "={{ $json.request_source === 'form' ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        4800,
+        1184
+      ],
+      "id": "25ff049d-6292-495e-9217-9d2877fc9b1f",
+      "name": "IsInternalPaymentForm"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Payment Recording Result",
+        "completionMessage": "={{ ($json.recorded ? 'Recorded: ' + $json.payment_id + '. ' : 'Not recorded: ' + ($json.reason||'Invalid payment') + '. ') + 'No money was moved by n8n.' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        5040,
+        1024
+      ],
+      "id": "c50b7077-dbe2-4a64-ae84-8f99e5f3423d",
+      "name": "ShowPaymentEntryResult"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:$json};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5040,
+        1296
+      ],
+      "id": "d4ef3c33-3387-40d3-8da6-13a8ff4e73fc",
+      "name": "ReturnPaymentEventResult"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:{report_batch:'invoices_loaded'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        416
+      ],
+      "id": "0c929b1b-916b-43cd-a75e-98f7cf8707d9",
+      "name": "CollapseReportInvoices"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:{report_batch:'payments_loaded'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        416
+      ],
+      "id": "5e4aca93-6eec-4326-b505-f3fd368338b7",
+      "name": "CollapseReportPayments"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:{payment_batch:'ledger_loaded'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        832
+      ],
+      "id": "a2dc5c16-15f6-46ae-ae3d-b6ca532ba5fc",
+      "name": "CollapsePaymentLedger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "PaymentInput": {
+      "main": [
+        [
+          {
+            "node": "TagPaymentInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Revenue Report": {
+      "main": [
+        [
+          {
+            "node": "TagReportInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RecordPaymentForm": {
+      "main": [
+        [
+          {
+            "node": "TagPaymentForm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RevenueDashboardForm": {
+      "main": [
+        [
+          {
+            "node": "TagReportForm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TagPaymentInput": {
+      "main": [
+        [
+          {
+            "node": "IsRevenueReport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TagReportInput": {
+      "main": [
+        [
+          {
+            "node": "IsRevenueReport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TagPaymentForm": {
+      "main": [
+        [
+          {
+            "node": "IsRevenueReport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TagReportForm": {
+      "main": [
+        [
+          {
+            "node": "IsRevenueReport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsRevenueReport": {
+      "main": [
+        [
+          {
+            "node": "GetInvoicesForReport",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NormalizePaymentEvent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetInvoicesForReport": {
+      "main": [
+        [
+          {
+            "node": "CollapseReportInvoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetPaymentsForReport": {
+      "main": [
+        [
+          {
+            "node": "CollapseReportPayments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildRevenueIntelligence": {
+      "main": [
+        [
+          {
+            "node": "SaveRevenueSnapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveRevenueSnapshot": {
+      "main": [
+        [
+          {
+            "node": "IsDashboardFormRequest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsDashboardFormRequest": {
+      "main": [
+        [
+          {
+            "node": "ShowRevenueDashboard",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ReturnRevenueReport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NormalizePaymentEvent": {
+      "main": [
+        [
+          {
+            "node": "PaymentInputValid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PaymentInputValid": {
+      "main": [
+        [
+          {
+            "node": "GetInvoiceForPayment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BuildInvalidPaymentResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetInvoiceForPayment": {
+      "main": [
+        [
+          {
+            "node": "FindDuplicatePayment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FindDuplicatePayment": {
+      "main": [
+        [
+          {
+            "node": "GetInvoicePaymentLedger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetInvoicePaymentLedger": {
+      "main": [
+        [
+          {
+            "node": "CollapsePaymentLedger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AssessPaymentEligibility": {
+      "main": [
+        [
+          {
+            "node": "CanRecordPayment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CanRecordPayment": {
+      "main": [
+        [
+          {
+            "node": "PreparePaymentRow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BuildRejectedPaymentResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PreparePaymentRow": {
+      "main": [
+        [
+          {
+            "node": "InsertPaymentLedger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InsertPaymentLedger": {
+      "main": [
+        [
+          {
+            "node": "UpdateInvoicePaymentBalance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateInvoicePaymentBalance": {
+      "main": [
+        [
+          {
+            "node": "IsInvoiceFullyPaid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsInvoiceFullyPaid": {
+      "main": [
+        [
+          {
+            "node": "SyncLeadCRMOnPaid",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BuildRecordedPaymentResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SyncLeadCRMOnPaid": {
+      "main": [
+        [
+          {
+            "node": "BuildRecordedPaymentResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildRecordedPaymentResult": {
+      "main": [
+        [
+          {
+            "node": "IsInternalPaymentForm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildRejectedPaymentResult": {
+      "main": [
+        [
+          {
+            "node": "IsInternalPaymentForm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildInvalidPaymentResult": {
+      "main": [
+        [
+          {
+            "node": "IsInternalPaymentForm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsInternalPaymentForm": {
+      "main": [
+        [
+          {
+            "node": "ShowPaymentEntryResult",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ReturnPaymentEventResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CollapseReportInvoices": {
+      "main": [
+        [
+          {
+            "node": "GetPaymentsForReport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CollapseReportPayments": {
+      "main": [
+        [
+          {
+            "node": "BuildRevenueIntelligence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CollapsePaymentLedger": {
+      "main": [
+        [
+          {
+            "node": "AssessPaymentEligibility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

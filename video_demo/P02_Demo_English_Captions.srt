@@ -1,0 +1,35 @@
+1
+00:00:00,200 --> 00:00:05,650
+AI Revenue Operations: a modular Lead-to-Cash automation portfolio demo.
+
+2
+00:00:06,200 --> 00:00:12,650
+Six interconnected modules designed for a clear sales and finance workflow.
+
+3
+00:00:13,200 --> 00:00:20,650
+Lead capture uses validation, CRM storage and duplicate protection.
+
+4
+00:00:21,200 --> 00:00:28,650
+Gemini qualifies leads, with Groq as an AI fallback.
+
+5
+00:00:29,200 --> 00:00:36,650
+Draft proposals and indicative quotations are prepared for review.
+
+6
+00:00:37,200 --> 00:00:44,650
+The sales pipeline records opportunities and human approval decisions.
+
+7
+00:00:45,200 --> 00:00:52,650
+Contract and invoice drafting is protected by manual review gates.
+
+8
+00:00:53,200 --> 00:01:00,650
+Payment recording and revenue reports provide visibility into balances.
+
+9
+00:01:01,200 --> 00:01:06,650
+A portfolio demonstration by Ahmed Negm. No live payment capture.

@@ -1,0 +1,1793 @@
+{
+  "name": "P02 | AI Lead-to-Cash Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Business Inquiry Portal",
+        "formDescription": "Tell us about your business needs.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full Name",
+              "fieldName": "full_name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Work Email",
+              "fieldType": "email",
+              "fieldName": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company Name",
+              "fieldName": "company",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Service Needed",
+              "fieldType": "dropdown",
+              "fieldName": "service_needed",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "AI Automation"
+                  },
+                  {
+                    "option": "AI Agent"
+                  },
+                  {
+                    "option": "CRM Integration"
+                  },
+                  {
+                    "option": "Other"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Project Description",
+              "fieldType": "textarea",
+              "fieldName": "project_description",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Estimated Budget",
+              "fieldType": "dropdown",
+              "fieldName": "budget_range",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Under $500"
+                  },
+                  {
+                    "option": "$500–$2,000"
+                  },
+                  {
+                    "option": "Over $2,000"
+                  },
+                  {
+                    "option": "Not Sure"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Expected Timeline",
+              "fieldType": "dropdown",
+              "fieldName": "desired_timeline",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "ASAP"
+                  },
+                  {
+                    "option": "Within 1 Month"
+                  },
+                  {
+                    "option": "Flexible"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        416
+      ],
+      "id": "1fefd80b-d67e-4eaf-a69b-fd368dee999b",
+      "name": "GetLead"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst clean = (value) =>\n  String(value ?? '').trim().replace(/\\s+/g, ' ');\n\nreturn {\n  json: {\n    ...$json,\n    full_name: clean($json.full_name),\n    email: clean($json.email).toLowerCase(),\n    company: clean($json.company),\n    service_needed: clean($json.service_needed),\n    project_description: clean($json.project_description),\n    budget_range: clean($json.budget_range),\n    desired_timeline: clean($json.desired_timeline)\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        320
+      ],
+      "id": "7df03632-0fb8-4bc9-8dd3-9e321c9d2c23",
+      "name": "NormalizeLead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "67320bd5-af76-4724-806b-d88416a367e3",
+              "leftValue": "={{ ['full_name', 'email', 'company', 'service_needed', 'project_description'].every(k => String($json[k] ?? '').trim()) && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test($json.email) }}\n",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        672,
+        320
+      ],
+      "id": "d73e2528-544e-43b8-98f7-d1757e8ec7d3",
+      "name": "ValidateLead"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "195cbd53-1162-4fa1-a397-6a052a5d4699",
+              "name": "lead_status",
+              "value": "invalid",
+              "type": "string"
+            },
+            {
+              "id": "13585ee7-b061-4ceb-ae9d-fc900cab382b",
+              "name": "validation_error",
+              "value": "Missing required fields or invalid email",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        896,
+        416
+      ],
+      "id": "05cc2fe7-fcd0-48af-8a99-775106e28e35",
+      "name": "FlagInvalidLead"
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "keyValue": "={{ $json.email }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        224
+      ],
+      "id": "1997d0c3-0337-498f-a22f-9655779480a7",
+      "name": "CheckNewLead",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "929d52be-3fbe-4d52-9774-d39d21af8014",
+              "leftValue": "={{ $json.email ?? '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1120,
+        224
+      ],
+      "id": "cf83260a-bc3f-456b-9fa1-d56edb411f0c",
+      "name": "IsNewLead"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "69da3d95-1c1a-4466-aba5-64fee3be4095",
+              "name": "lead_status",
+              "value": "duplicate",
+              "type": "string"
+            },
+            {
+              "id": "facd8b82-1ca8-47a6-bed2-c5d33fcd6ce4",
+              "name": "validation_error",
+              "value": "Lead with this email already exists",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1344,
+        320
+      ],
+      "id": "af5a7383-696d-4ec7-a21c-d1b19e324258",
+      "name": "FlagDuplicateLead"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{ 'LEAD-' + $execution.id }}",
+            "full_name": "={{ $json.full_name }}",
+            "email": "={{ $json.email }}",
+            "company": "={{ $json.company }}",
+            "service_needed": "={{ $json.service_needed }}",
+            "project_description": "={{ $json.project_description }}",
+            "budget_range": "={{ $json.budget_range }}",
+            "desired_timeline": "={{ $json.desired_timeline }}",
+            "lead_status": "new"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_needed",
+              "displayName": "service_needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "project_description",
+              "displayName": "project_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "budget_range",
+              "displayName": "budget_range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "desired_timeline",
+              "displayName": "desired_timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_score",
+              "displayName": "lead_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ai_summary",
+              "displayName": "ai_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        128
+      ],
+      "id": "0c2b2890-a2c5-426a-9f68-bda93171204a",
+      "name": "SaveNewLead"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst lead = $json;\n\nreturn {\n  json: {\n    ...lead,\n    ai_input: {\n      service_needed: lead.service_needed,\n      project_description: lead.project_description,\n      budget_range: lead.budget_range,\n      desired_timeline: lead.desired_timeline\n    }\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        128
+      ],
+      "id": "22dd3d53-d156-4a6f-9086-94cf57b09e7d",
+      "name": "PrepareLeadForAI"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Inquiry Received",
+        "completionMessage": "={{ 'Thank you! Your inquiry has been received.\\nReference: ' + $('SaveNewLead').first().json.lead_id + '\\nStatus: received' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        4480,
+        32
+      ],
+      "id": "7ffbf0e5-f42f-4c45-a930-e5ac5cec2a11",
+      "name": "ShowLeadResult"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $json.lead_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_score": "={{ $json.lead_score }}",
+            "ai_summary": "={{ $json.ai_summary }}",
+            "lead_priority": "={{ $json.lead_priority }}",
+            "lead_status": "assessed"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_needed",
+              "displayName": "service_needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "project_description",
+              "displayName": "project_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "budget_range",
+              "displayName": "budget_range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "desired_timeline",
+              "displayName": "desired_timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_score",
+              "displayName": "lead_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ai_summary",
+              "displayName": "ai_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_priority",
+              "displayName": "lead_priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2016,
+        32
+      ],
+      "id": "ccf36322-9694-4b47-af03-ca5330b0c9a9",
+      "name": "UpdateLeadQualification"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Invalid Inquiry",
+        "completionMessage": "Please check your information and submit the form again.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1120,
+        416
+      ],
+      "id": "027d86a4-89b3-4bad-beed-eef31d034bef",
+      "name": "ShowInvalidLeadResult"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Inquiry Already Received",
+        "completionMessage": "We have already received an inquiry using this email address. Please contact us if you need to update your request.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1568,
+        320
+      ],
+      "id": "da46cdf7-0baf-43cb-b1f0-3d368a08d042",
+      "name": "ShowDuplicateLeadResult"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $('PrepareLeadForAI').first().json.lead_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_status": "qualification_failed"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_needed",
+              "displayName": "service_needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "project_description",
+              "displayName": "project_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "budget_range",
+              "displayName": "budget_range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "desired_timeline",
+              "displayName": "desired_timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_score",
+              "displayName": "lead_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ai_summary",
+              "displayName": "ai_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_priority",
+              "displayName": "lead_priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2016,
+        224
+      ],
+      "id": "5fc05e6c-dc9b-4b5f-aedd-b30f1be4c4fc",
+      "name": "MarkAIQualificationFailed"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Inquiry Received",
+        "completionMessage": "Your inquiry was saved, but automated assessment could not be completed.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        2464,
+        256
+      ],
+      "id": "c1961ba2-c70c-47ee-a1f6-f2c6b63082b8",
+      "name": "Form"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst lead = $('CallLeadQualificationAI').first().json;\n\nconst plans = {\n  high: {\n    next_action: 'Schedule discovery call within 1 business day'\n  },\n  medium: {\n    next_action: 'Request more project details within 3 business days'\n  },\n  low: {\n    next_action: 'Send exploratory follow-up within 7 business days'\n  }\n};\n\nconst plan = plans[lead.lead_priority] ?? plans.low;\n\nreturn {\n  json: {\n    ...lead,\n    next_action: plan.next_action,\n    follow_up_status: 'draft_pending_review'\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        32
+      ],
+      "id": "a4a2364d-2ff3-48f5-b708-897838bbc876",
+      "name": "PlanSalesFollowUp"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst lead = $json;\n\nconst messages = {\n  high: \"Would you be available for a short discovery call to discuss your project?\",\n  medium: \"Could you share more details about your current tools and requirements?\",\n  low: \"Could you tell us more about your project scope and preferred timeline?\"\n};\n\nconst question = messages[lead.lead_priority]\n  ?? messages.low;\n\nconst subject = `Following up on your ${lead.service_needed} inquiry`;\n\nconst body = `Hi ${lead.full_name},\n\nThank you for contacting us about ${lead.service_needed}.\n\n${question}\n\nWe look forward to learning more about your requirements.\n\nBest regards,\nSales Team`;\n\nreturn {\n  json: {\n    ...lead,\n    follow_up_subject: subject,\n    follow_up_body: body\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        32
+      ],
+      "id": "32515175-d1f1-4ba4-a6eb-bd566fa4bdf1",
+      "name": "DraftSalesFollowUp"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $json.lead_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "next_action": "={{ $json.next_action }}",
+            "follow_up_status": "={{ $json.follow_up_status }}",
+            "follow_up_subject": "={{ $json.follow_up_subject }}",
+            "follow_up_body": "={{ $json.follow_up_body }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_needed",
+              "displayName": "service_needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "project_description",
+              "displayName": "project_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "budget_range",
+              "displayName": "budget_range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "desired_timeline",
+              "displayName": "desired_timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_score",
+              "displayName": "lead_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ai_summary",
+              "displayName": "ai_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_priority",
+              "displayName": "lead_priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "next_action",
+              "displayName": "next_action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "follow_up_status",
+              "displayName": "follow_up_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "follow_up_subject",
+              "displayName": "follow_up_subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "follow_up_body",
+              "displayName": "follow_up_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2688,
+        32
+      ],
+      "id": "54fd8bba-d645-482c-9d8a-1057b003222b",
+      "name": "SaveLeadFollowUpDraft",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "P02 | AI Lead Qualification Engine"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        1792,
+        128
+      ],
+      "id": "b4457367-9371-4be7-8b39-a2d415ed35aa",
+      "name": "CallLeadQualificationAI",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "9b76de85-1a05-4e3f-80b1-28a45fa2a246",
+              "leftValue": "={{ $('GenerateDemoLead').isExecuted ? 'high' : $('PlanSalesFollowUp').first().json.lead_priority }}",
+              "rightValue": "high",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2912,
+        32
+      ],
+      "id": "c6604029-53ab-479f-aa34-8a504a8105f6",
+      "name": "ShouldDraftProposal"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst lead = $('PlanSalesFollowUp').first().json;\n\nreturn {\n  json: {\n    lead_id: lead.lead_id,\n    full_name: lead.full_name,\n    email: lead.email,\n    company: lead.company,\n    service_needed: lead.service_needed,\n    project_description: lead.project_description,\n    budget_range: lead.budget_range,\n    desired_timeline: lead.desired_timeline,\n    lead_score: lead.lead_score,\n    lead_priority: lead.lead_priority,\n    ai_summary: lead.ai_summary\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3136,
+        -48
+      ],
+      "id": "fe82da21-1f8a-4ee3-8f39-21d74865b035",
+      "name": "PrepareProposalPayload"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "P02 | Sales Proposal & Quotation"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        3360,
+        -48
+      ],
+      "id": "9c3fe8af-b3ee-46bd-bebb-e4ad3224a6a3",
+      "name": "CallSalesProposal",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        224
+      ],
+      "id": "d6039d2b-7f5f-43c5-a3d6-a324b45cc9de",
+      "name": "ManualDemoTest"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst runId = String($execution.id || Date.now());\n\nreturn {\n  json: {\n    full_name: \"John Smith\",\n    email: `demo+${runId}@example.com`,\n    company: \"Demo Tech Solutions\",\n    service_needed: \"AI Automation\",\n    project_description:\n      \"We need an AI-powered sales automation system that captures leads, qualifies them, updates our CRM, generates professional quotations, and tracks invoices and payments.\",\n    budget_range: \"Over $2,000\",\n    desired_timeline: \"ASAP\",\n    demo_mode: true\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        224
+      ],
+      "id": "cbadd41f-8dba-4dc3-85a0-3ba1257c2938",
+      "name": "GenerateDemoLead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "cf742f08-8776-4277-be01-d7ff95584c9f",
+              "leftValue": "={{ $('ManualDemoTest').isExecuted }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        4256,
+        32
+      ],
+      "id": "cac9a648-dd2a-4aa9-aa74-56c4b13c8059",
+      "name": "IsDemoExecution"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "P02 | Sales Pipeline & Approvals - Final"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        3808,
+        -48
+      ],
+      "id": "5430e626-ba57-44aa-99f6-76222d693aca",
+      "name": "Call 'P02 | Sales Pipeline & Approvals - Final'",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "d1d47706-e8ce-4338-92c6-6ba8f5f0f969",
+              "leftValue": "={{ $json.status === 'draft_pending_review' && $json.storage?.saved === true && !!$json.quote_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        3584,
+        -48
+      ],
+      "id": "0a54b93e-e575-4e3b-8c11-6375eb22728e",
+      "name": "ProposalReadyForPipeline"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $('PrepareProposalPayload').first().json.lead_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_status": "proposal_needs_review"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3808,
+        176
+      ],
+      "id": "440d56fd-04d9-4a78-bf0b-0f5cd23d6fba",
+      "name": "MarkProposalNeedsReview",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $('PrepareProposalPayload').first().json.lead_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_status": "pipeline_handoff_failed"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4032,
+        176
+      ],
+      "id": "47b98409-392e-42d7-b1d4-a990db23919c",
+      "name": "MarkPipelineHandoffFailed",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "ab1fea64-273b-48e7-814d-475066010ca7",
+              "leftValue": "={{ $('ManualDemoTest').isExecuted }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2240,
+        256
+      ],
+      "id": "9868a78a-49cf-4a4c-bce1-7acb20429c2b",
+      "name": "IsDemoOnAIError"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Manual demo summary. No Form node is needed on this path.\nconst executed = name => $(name).isExecuted;\nconst lead = executed('SaveNewLead') ? $('SaveNewLead').first().json : {};\nconst proposal = executed('CallSalesProposal') ? $('CallSalesProposal').first().json : {};\nconst pipeline = executed(\"Call 'P02 | Sales Pipeline & Approvals - Final'\")\n  ? $(\"Call 'P02 | Sales Pipeline & Approvals - Final'\").first().json : {};\nconst qualificationFailed = executed('MarkAIQualificationFailed');\nconst proposalFailed = executed('MarkProposalNeedsReview');\nconst pipelineFailed = executed('MarkPipelineHandoffFailed');\nreturn {json:{\n  status: qualificationFailed ? 'qualification_failed' : pipelineFailed ? 'pipeline_handoff_failed' :\n    proposalFailed ? 'proposal_needs_review' : 'demo_completed',\n  demo_mode:true,\n  lead_id:lead.lead_id ?? null,\n  lead_score: executed('CallLeadQualificationAI') ? $('CallLeadQualificationAI').first().json.lead_score ?? null : null,\n  quote_id:proposal.quote_id ?? null,\n  proposal_saved:proposal.storage?.saved === true,\n  opportunity_id:pipeline.opportunity_id ?? null,\n  note:'Demo only. Finance approval, contract signature and payment recording are separate human-operated steps.'\n}};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4480,
+        -160
+      ],
+      "id": "b0831e61-2e16-47a2-b309-3f3b4ec646d6",
+      "name": "ReturnDemoResult"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "GetLead": {
+      "main": [
+        [
+          {
+            "node": "NormalizeLead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NormalizeLead": {
+      "main": [
+        [
+          {
+            "node": "ValidateLead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ValidateLead": {
+      "main": [
+        [
+          {
+            "node": "CheckNewLead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FlagInvalidLead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CheckNewLead": {
+      "main": [
+        [
+          {
+            "node": "IsNewLead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsNewLead": {
+      "main": [
+        [
+          {
+            "node": "SaveNewLead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FlagDuplicateLead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveNewLead": {
+      "main": [
+        [
+          {
+            "node": "PrepareLeadForAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareLeadForAI": {
+      "main": [
+        [
+          {
+            "node": "CallLeadQualificationAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateLeadQualification": {
+      "main": [
+        [
+          {
+            "node": "PlanSalesFollowUp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FlagInvalidLead": {
+      "main": [
+        [
+          {
+            "node": "ShowInvalidLeadResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FlagDuplicateLead": {
+      "main": [
+        [
+          {
+            "node": "ShowDuplicateLeadResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MarkAIQualificationFailed": {
+      "main": [
+        [
+          {
+            "node": "IsDemoOnAIError",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PlanSalesFollowUp": {
+      "main": [
+        [
+          {
+            "node": "DraftSalesFollowUp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DraftSalesFollowUp": {
+      "main": [
+        [
+          {
+            "node": "SaveLeadFollowUpDraft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveLeadFollowUpDraft": {
+      "main": [
+        [
+          {
+            "node": "ShouldDraftProposal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CallLeadQualificationAI": {
+      "main": [
+        [
+          {
+            "node": "UpdateLeadQualification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MarkAIQualificationFailed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ShouldDraftProposal": {
+      "main": [
+        [
+          {
+            "node": "PrepareProposalPayload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IsDemoExecution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareProposalPayload": {
+      "main": [
+        [
+          {
+            "node": "CallSalesProposal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CallSalesProposal": {
+      "main": [
+        [
+          {
+            "node": "ProposalReadyForPipeline",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MarkProposalNeedsReview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ManualDemoTest": {
+      "main": [
+        [
+          {
+            "node": "GenerateDemoLead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateDemoLead": {
+      "main": [
+        [
+          {
+            "node": "NormalizeLead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsDemoExecution": {
+      "main": [
+        [
+          {
+            "node": "ReturnDemoResult",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ShowLeadResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ProposalReadyForPipeline": {
+      "main": [
+        [
+          {
+            "node": "Call 'P02 | Sales Pipeline & Approvals - Final'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MarkProposalNeedsReview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MarkProposalNeedsReview": {
+      "main": [
+        [
+          {
+            "node": "IsDemoExecution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'P02 | Sales Pipeline & Approvals - Final'": {
+      "main": [
+        [
+          {
+            "node": "IsDemoExecution",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MarkPipelineHandoffFailed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MarkPipelineHandoffFailed": {
+      "main": [
+        [
+          {
+            "node": "IsDemoExecution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsDemoOnAIError": {
+      "main": [
+        [
+          {
+            "node": "ReturnDemoResult",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

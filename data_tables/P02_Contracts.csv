@@ -1,0 +1,2 @@
+﻿contract_id,quote_id,lead_id,company,service_needed,currency,service_fee_usd,contract_markdown,contract_status,signature_evidence_ref,reviewed_by,reviewed_at,created_at
+SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,USD,0.01,SAMPLE_DELETE_ME,sample_only,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME

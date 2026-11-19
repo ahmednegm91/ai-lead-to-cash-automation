@@ -1,0 +1,2 @@
+﻿invoice_id,contract_id,quote_id,lead_id,company,currency,subtotal_usd,tax_usd,total_due_usd,paid_amount_usd,invoice_status,issue_date,due_date,invoice_markdown,released_by,released_at,paid_at,created_at
+SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,USD,0.01,0.0,0.01,0.0,sample_only,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME

@@ -1,0 +1,13 @@
+{
+  "workflows": 6,
+  "total_nodes": 163,
+  "js_code_nodes": 56,
+  "table_nodes": 38,
+  "table_csv": 8,
+  "connections": 164,
+  "errors": [],
+  "warnings": [],
+  "simulation_pass": 39,
+  "simulation_total": 39,
+  "simulation_coverage_pct": 100
+}

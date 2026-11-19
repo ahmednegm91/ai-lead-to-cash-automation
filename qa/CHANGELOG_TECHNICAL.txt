@@ -1,0 +1,6 @@
+01: Support code-fenced Gemini JSON and correct primary retry wait to 2000ms.
+02: Add conservative HTML stripping for generated proposal text; keep existing safe fallback and manual approval.
+03: Repair two literal "=" CRM mappings, use table-by-name, complete main success/form/demo paths, handle proposal/pipeline failures and add demo summary.
+04: Add document-call error route that does not falsely claim draft generation succeeded.
+05: Validate actual calendar dates and allow safe retry if invoice write failed after contract signature confirmation.
+06: Collapse multi-row Data Table Get results before side-effect nodes (prevents duplicate payments and multiple snapshots); strictly validate payment date.

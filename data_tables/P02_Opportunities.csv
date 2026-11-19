@@ -1,0 +1,2 @@
+﻿opportunity_id,quote_id,lead_id,company,service_needed,stage,approval_status,estimated_value_usd,owner,last_action,updated_at,reviewer,decision_notes,decided_at,created_at
+SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,sample_only,0.01,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME

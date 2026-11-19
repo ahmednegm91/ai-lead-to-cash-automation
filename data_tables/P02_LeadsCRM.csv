@@ -1,0 +1,2 @@
+﻿lead_id,full_name,email,company,service_needed,project_description,budget_range,desired_timeline,lead_score,lead_status,ai_summary,lead_priority,next_action,follow_up_status,follow_up_subject,follow_up_body
+SAMPLE_DELETE_ME,Sample Delete Me,sample@example.com,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,0,sample_only,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME

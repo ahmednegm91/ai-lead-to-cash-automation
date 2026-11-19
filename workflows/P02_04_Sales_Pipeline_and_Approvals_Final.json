@@ -1,0 +1,1648 @@
+{
+  "name": "P02 | Sales Pipeline & Approvals - Final",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## P02 | Sales Pipeline & Approvals\n**Intake:** `OpportunityInput` receives `quote_id`, `lead_id`, and other proposal fields from `P02 | Sales Proposal & Quotation` output.\n**Manual Demo Test:** preview only (NO database writes).\n**Human Approval:** `ReviewProposalForm` is restricted to logged-in n8n users with execution permission. It looks up `P02_Proposals` and `P02_Opportunities` before writing any decision.\n**Data Tables:** P02_Opportunities, P02_ApprovalLog; reads/writes existing P02_Proposals.\n**On approved decision:** `ApprovedDocumentHandoff` is the point to connect Execute Sub-workflow for Module 05. **No auto-approval, auto-email, or payment.** Reviewer must confirm the pricing and scope. Publish only after testing and access review.",
+        "height": 410,
+        "width": 670
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        288
+      ],
+      "id": "4b9c3313-4234-49e2-837b-790536c7aade",
+      "name": "04 | Read Me"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        1168,
+        816
+      ],
+      "id": "4b87ea2c-4b16-4081-92b3-a7d195d700cb",
+      "name": "OpportunityInput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        752,
+        1376
+      ],
+      "id": "1f39dacb-e63d-4f68-9d8d-985f7a898f12",
+      "name": "Manual Demo Test"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const quote_id = 'P02-Q-DEMO-' + String($execution.id ?? Date.now());\nreturn {json:{demo_only:true,quote_id,lead_id:'LEAD-DEMO-ONLY',opportunity_id:'OPP-'+quote_id,company:'Fictional Demo Labs',service_needed:'AI Automation',estimated_value_usd:650,stage:'proposal_pending_review',approval_status:'pending_review',message:'Preview only. No Data Table writes and no customer action.'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        1376
+      ],
+      "id": "01d5685c-f82a-4e48-9a3a-10f507f502ea",
+      "name": "DemoOpportunityPreview"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d=$json;\nconst s=v=>String(v??'').trim();\nconst quote_id=s(d.quote_id??d.quotation?.quote_id);\nconst lead_id=s(d.lead_id);\nreturn {json:{quote_id,lead_id,valid:quote_id.length>5&&lead_id.length>3,reason:quote_id&&lead_id?'':'quote_id and lead_id are required'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        816
+      ],
+      "id": "70a8cfb0-07b9-4730-ae00-54c395d5c6b2",
+      "name": "NormalizeOpportunityInput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "5066534b-f1f1-49a7-9905-766936df481d",
+              "leftValue": "={{ $json.valid ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1616,
+        816
+      ],
+      "id": "3a563fc2-1deb-4cef-9bc2-6848f82f1717",
+      "name": "IsOpportunityInputValid"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'blocked',reason:$json.reason||'Invalid proposal reference',can_approve:false}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        992
+      ],
+      "id": "1a7fa556-b524-48b8-86fa-6aaff6733d2a",
+      "name": "ReturnOpportunityInputError"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Proposals",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('NormalizeOpportunityInput').first().json.quote_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1856,
+        736
+      ],
+      "id": "a89b543c-de32-4431-8db8-40ff63f34371",
+      "name": "FindStoredProposal",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input=$('NormalizeOpportunityInput').first().json;\nconst p=$('FindStoredProposal').first().json||{};\nconst amt=Number(p.indicative_subtotal_usd);\nconst ok=Boolean(p.quote_id===input.quote_id&&p.lead_id===input.lead_id&&p.approval_status==='pending_review'&&Number.isFinite(amt)&&amt>0&&!String(p.quote_id).startsWith('SAMPLE'));\nreturn {json:{valid:ok,reason:ok?'':'Stored proposal missing, wrong status, or illustrative fee absent. Run proposal generation first.',quote_id:input.quote_id,lead_id:input.lead_id,company:p.company||'',service_needed:p.service_needed||'',estimated_value_usd:amt}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        736
+      ],
+      "id": "0e6b39f5-acf6-4155-bed1-78bc9612f240",
+      "name": "ValidateStoredProposal"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "c06ca0bc-6b75-4378-8eb6-b619eb531dc8",
+              "leftValue": "={{ $json.valid ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2304,
+        736
+      ],
+      "id": "1395f15f-79d2-4ad9-939d-126df80c153e",
+      "name": "CanOpenOpportunity"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{status:'blocked',reason:$json.reason,quote_id:$json.quote_id,can_approve:false}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        912
+      ],
+      "id": "c6f7d56b-c99e-49f8-9005-2c7ba469d04b",
+      "name": "ReturnOpportunityBlocked"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Opportunities",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('ValidateStoredProposal').first().json.quote_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2544,
+        640
+      ],
+      "id": "1890c952-86cb-4b95-8151-9e841faaa2b2",
+      "name": "FindExistingOpportunity",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "4510c955-a1e0-4c3a-9f6b-53fb5ba687a2",
+              "leftValue": "={{ $json.opportunity_id ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2768,
+        640
+      ],
+      "id": "85ae6081-97e6-4984-8ff2-679eaafd1e32",
+      "name": "OpportunityAlreadyExists"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{...$json,status:'already_exists',created:false,message:'Existing opportunity preserved; existing approval was not reset.'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3024,
+        512
+      ],
+      "id": "c6226509-210a-4a02-87c0-4ff60bd98601",
+      "name": "ReturnExistingOpportunity"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d=$('ValidateStoredProposal').first().json;\nconst at=new Date().toISOString();\nreturn {json:{opportunity_id:'OPP-'+d.quote_id,quote_id:d.quote_id,lead_id:d.lead_id,company:d.company,service_needed:d.service_needed,stage:'proposal_pending_review',approval_status:'pending_review',estimated_value_usd:d.estimated_value_usd,owner:'unassigned',last_action:'Awaiting authorized sales review',updated_at:at,reviewer:'',decision_notes:'',decided_at:'',created_at:at}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3024,
+        688
+      ],
+      "id": "8f7e881e-3ca9-4a00-b016-ee4cb9da398c",
+      "name": "BuildNewOpportunity"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Opportunities",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "opportunity_id": "={{ $('BuildNewOpportunity').first().json.opportunity_id }}",
+            "quote_id": "={{ $('BuildNewOpportunity').first().json.quote_id }}",
+            "lead_id": "={{ $('BuildNewOpportunity').first().json.lead_id }}",
+            "company": "={{ $('BuildNewOpportunity').first().json.company }}",
+            "service_needed": "={{ $('BuildNewOpportunity').first().json.service_needed }}",
+            "stage": "={{ $('BuildNewOpportunity').first().json.stage }}",
+            "approval_status": "={{ $('BuildNewOpportunity').first().json.approval_status }}",
+            "estimated_value_usd": "={{ $('BuildNewOpportunity').first().json.estimated_value_usd }}",
+            "owner": "={{ $('BuildNewOpportunity').first().json.owner }}",
+            "last_action": "={{ $('BuildNewOpportunity').first().json.last_action }}",
+            "updated_at": "={{ $('BuildNewOpportunity').first().json.updated_at }}",
+            "reviewer": "={{ $('BuildNewOpportunity').first().json.reviewer }}",
+            "decision_notes": "={{ $('BuildNewOpportunity').first().json.decision_notes }}",
+            "decided_at": "={{ $('BuildNewOpportunity').first().json.decided_at }}",
+            "created_at": "={{ $('BuildNewOpportunity').first().json.created_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "opportunity_id",
+              "displayName": "opportunity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "quote_id",
+              "displayName": "quote_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_needed",
+              "displayName": "service_needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "stage",
+              "displayName": "stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "approval_status",
+              "displayName": "approval_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estimated_value_usd",
+              "displayName": "estimated_value_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "owner",
+              "displayName": "owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "last_action",
+              "displayName": "last_action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewer",
+              "displayName": "reviewer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "decision_notes",
+              "displayName": "decision_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "decided_at",
+              "displayName": "decided_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3248,
+        688
+      ],
+      "id": "d259cc19-59d1-4a11-99a0-8402610e0d83",
+      "name": "SaveNewOpportunity"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{...$('BuildNewOpportunity').first().json,status:'opportunity_created',created:true,storage:{table:'P02_Opportunities',row_id:$json.id??null}}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3488,
+        688
+      ],
+      "id": "fc2f9b90-ee60-44e3-be20-4bfecf5b48ff",
+      "name": "ReturnNewOpportunity"
+    },
+    {
+      "parameters": {
+        "authentication": "n8nUserAuth",
+        "requireExecuteAccess": true,
+        "formTitle": "Sales Proposal Review",
+        "formDescription": "Private reviewer-only form. Check the draft and indicative pricing before approving.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Proposal Reference",
+              "fieldName": "quote_id",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldName": "approval_decision",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "approve"
+                  },
+                  {
+                    "option": "reject"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Pricing and scope reviewed?",
+              "fieldType": "dropdown",
+              "fieldName": "pricing_confirmed",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Yes"
+                  },
+                  {
+                    "option": "No"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reviewer",
+              "fieldName": "reviewer",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Review notes (required for rejection)",
+              "fieldType": "textarea",
+              "fieldName": "review_notes"
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {
+          "includeUserInOutput": true
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        1168,
+        1712
+      ],
+      "id": "32ce176b-e513-4851-9847-70ae640efd2e",
+      "name": "ReviewProposalForm"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const s=v=>String(v??'').trim();\nconst quote_id=s($json.quote_id);\nconst decision=s($json.approval_decision).toLowerCase();\nconst reviewer=s($json.reviewer);\nconst notes=s($json.review_notes);\nconst confirmed=s($json.pricing_confirmed)==='Yes';\nconst valid=quote_id.length>5&&['approve','reject'].includes(decision)&&reviewer.length>1&&(decision!=='approve'||confirmed)&&(decision!=='reject'||notes.length>3);\nreturn {json:{valid,quote_id,decision,reviewer,notes,confirmed,reason:valid?'':'Check quote reference, reviewer, pricing confirmation, or rejection explanation.'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        1712
+      ],
+      "id": "9d66e78d-5ce5-41c4-8830-83a06e6afa07",
+      "name": "PrepareReviewRequest"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "34492ce9-2fde-43b0-a485-081d13ee685e",
+              "leftValue": "={{ $json.valid ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1616,
+        1712
+      ],
+      "id": "7df8e6c1-b9a5-4081-b515-8b634025646e",
+      "name": "ReviewRequestValid"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Review Not Applied",
+        "completionMessage": "={{ $json.reason || 'This proposal cannot be reviewed in its current state.' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        3040,
+        1952
+      ],
+      "id": "0b61d611-666b-4d37-a238-354cd51b3fd8",
+      "name": "ShowReviewBlocked"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Proposals",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('PrepareReviewRequest').first().json.quote_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1856,
+        1584
+      ],
+      "id": "5a069a2e-662c-4d19-a5e6-b2b27dfdb44e",
+      "name": "LoadProposalForReview",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Opportunities",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('PrepareReviewRequest').first().json.quote_id }}"
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        1584
+      ],
+      "id": "681c9378-7fea-4999-9682-a9b2b32c43cb",
+      "name": "LoadOpportunityForReview",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const r=$('PrepareReviewRequest').first().json;\nconst p=$('LoadProposalForReview').first().json||{};\nconst o=$('LoadOpportunityForReview').first().json||{};\nconst errs=[];\nif(!p.quote_id||p.quote_id!==r.quote_id)errs.push('Proposal not found');\nif(!o.opportunity_id||o.quote_id!==r.quote_id)errs.push('Opportunity not found');\nif(p.approval_status!=='pending_review')errs.push('Proposal is not pending review');\nif(o.approval_status!=='pending_review')errs.push('Opportunity is not pending review');\nif(p.lead_id&&o.lead_id&&p.lead_id!==o.lead_id)errs.push('Lead reference mismatch');\nif(r.decision==='approve'&&!(Number(p.indicative_subtotal_usd)>0))errs.push('Missing approved fee');\nif(String(r.quote_id).startsWith('SAMPLE'))errs.push('Sample rows cannot be approved');\nconst approved=r.decision==='approve', now=new Date().toISOString();\nreturn {json:{...r,valid:errs.length===0,reason:errs.join('; '),opportunity_id:o.opportunity_id||'',lead_id:p.lead_id||'',approval_status:approved?'approved':'rejected',stage:approved?'proposal_approved':'proposal_rejected',decided_at:now,updated_at:now,last_action:approved?'Approved: create draft contract and invoice':'Rejected: contact client or close opportunity',event_id:'APR-'+r.quote_id+'-'+String($execution.id||Date.now())}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2304,
+        1584
+      ],
+      "id": "9f938a96-93e0-4133-a984-3e72c8d1b9cf",
+      "name": "EvaluateReviewGate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "6906bac7-f110-482f-8b53-5a054299b8cd",
+              "leftValue": "={{ $json.valid ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2544,
+        1584
+      ],
+      "id": "f1f31789-0941-4f7c-8752-b2039c8b6ef3",
+      "name": "IsReviewAllowed"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Proposals",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('EvaluateReviewGate').first().json.quote_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "approval_status": "={{ $('EvaluateReviewGate').first().json.approval_status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "approval_status",
+              "displayName": "approval_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2768,
+        1552
+      ],
+      "id": "ff8aae31-e470-4519-b9c1-6330dcd68ff8",
+      "name": "UpdateProposalApproval"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_Opportunities",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "quote_id",
+              "keyValue": "={{ $('EvaluateReviewGate').first().json.quote_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "stage": "={{ $('EvaluateReviewGate').first().json.stage }}",
+            "approval_status": "={{ $('EvaluateReviewGate').first().json.approval_status }}",
+            "reviewer": "={{ $('EvaluateReviewGate').first().json.reviewer }}",
+            "decision_notes": "={{ $('EvaluateReviewGate').first().json.notes }}",
+            "decided_at": "={{ $('EvaluateReviewGate').first().json.decided_at }}",
+            "updated_at": "={{ $('EvaluateReviewGate').first().json.updated_at }}",
+            "last_action": "={{ $('EvaluateReviewGate').first().json.last_action }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "opportunity_id",
+              "displayName": "opportunity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "quote_id",
+              "displayName": "quote_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "service_needed",
+              "displayName": "service_needed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "stage",
+              "displayName": "stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "approval_status",
+              "displayName": "approval_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estimated_value_usd",
+              "displayName": "estimated_value_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "owner",
+              "displayName": "owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "last_action",
+              "displayName": "last_action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewer",
+              "displayName": "reviewer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "decision_notes",
+              "displayName": "decision_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "decided_at",
+              "displayName": "decided_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3024,
+        1552
+      ],
+      "id": "a2e63c02-88cd-4449-a259-cf84b9413d7a",
+      "name": "UpdateOpportunityApproval"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_ApprovalLog",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_id": "={{ $('EvaluateReviewGate').first().json.event_id }}",
+            "quote_id": "={{ $('EvaluateReviewGate').first().json.quote_id }}",
+            "opportunity_id": "={{ $('EvaluateReviewGate').first().json.opportunity_id }}",
+            "lead_id": "={{ $('EvaluateReviewGate').first().json.lead_id }}",
+            "decision": "={{ $('EvaluateReviewGate').first().json.approval_status }}",
+            "reviewer": "={{ $('EvaluateReviewGate').first().json.reviewer }}",
+            "notes": "={{ $('EvaluateReviewGate').first().json.notes }}",
+            "decided_at": "={{ $('EvaluateReviewGate').first().json.decided_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "quote_id",
+              "displayName": "quote_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "opportunity_id",
+              "displayName": "opportunity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "decision",
+              "displayName": "decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reviewer",
+              "displayName": "reviewer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "decided_at",
+              "displayName": "decided_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3264,
+        1552
+      ],
+      "id": "aa757e86-4ce1-43e4-a440-33c03d38056e",
+      "name": "SaveApprovalLog"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "P02_LeadsCRM",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $('EvaluateReviewGate').first().json.lead_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_status": "={{ $('EvaluateReviewGate').first().json.stage }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_status",
+              "displayName": "lead_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3264,
+        1840
+      ],
+      "id": "215a8891-4088-45c6-ba36-5719ca4122a7",
+      "name": "SyncLeadCRMOnReview",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "c62ea09b-7e5d-4cff-b487-872da4850d1c",
+              "leftValue": "={{ $('EvaluateReviewGate').first().json.approval_status }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        3488,
+        1552
+      ],
+      "id": "16153a58-1241-4b9f-a18a-aca39c9c5a1f",
+      "name": "DecisionApprovedForDocuments"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// This is the exact position to insert an Execute Sub-workflow call to Module 05.\nconst d=$('EvaluateReviewGate').first().json;\nreturn {json:{quote_id:d.quote_id,lead_id:d.lead_id,opportunity_id:d.opportunity_id,action:'draft',status:'approved_ready_for_documents'}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3712,
+        1472
+      ],
+      "id": "c7776751-f393-4c17-b93e-7d65ab4e08fb",
+      "name": "ApprovedDocumentHandoff"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Review Decision Saved",
+        "completionMessage": "={{ 'Quote: ' + $('EvaluateReviewGate').first().json.quote_id + '. Decision: ' + $('EvaluateReviewGate').first().json.approval_status + '. No email or contract sent.' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        3200,
+        1696
+      ],
+      "id": "94162970-01e3-499d-b9d5-c8971de5898e",
+      "name": "ShowReviewSaved"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "P02 | Contract & Invoice Automation"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        3760,
+        1600
+      ],
+      "id": "5745a07d-ca31-4a86-b3e4-c87bb62f55d1",
+      "name": "Call 'P02 | Contract & Invoice Automation'",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Review Saved; Document Draft Pending",
+        "completionMessage": "Sales review was saved, but contract and invoice drafts could not be created. A reviewer must inspect the execution and retry the document step.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        4256,
+        1760
+      ],
+      "id": "590a0012-f3a6-484f-95cf-3824f4fef359",
+      "name": "ShowDocumentDraftFailed"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Demo Test": {
+      "main": [
+        [
+          {
+            "node": "DemoOpportunityPreview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpportunityInput": {
+      "main": [
+        [
+          {
+            "node": "NormalizeOpportunityInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NormalizeOpportunityInput": {
+      "main": [
+        [
+          {
+            "node": "IsOpportunityInputValid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsOpportunityInputValid": {
+      "main": [
+        [
+          {
+            "node": "FindStoredProposal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ReturnOpportunityInputError",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FindStoredProposal": {
+      "main": [
+        [
+          {
+            "node": "ValidateStoredProposal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ValidateStoredProposal": {
+      "main": [
+        [
+          {
+            "node": "CanOpenOpportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CanOpenOpportunity": {
+      "main": [
+        [
+          {
+            "node": "FindExistingOpportunity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ReturnOpportunityBlocked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FindExistingOpportunity": {
+      "main": [
+        [
+          {
+            "node": "OpportunityAlreadyExists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpportunityAlreadyExists": {
+      "main": [
+        [
+          {
+            "node": "ReturnExistingOpportunity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BuildNewOpportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildNewOpportunity": {
+      "main": [
+        [
+          {
+            "node": "SaveNewOpportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveNewOpportunity": {
+      "main": [
+        [
+          {
+            "node": "ReturnNewOpportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReviewProposalForm": {
+      "main": [
+        [
+          {
+            "node": "PrepareReviewRequest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareReviewRequest": {
+      "main": [
+        [
+          {
+            "node": "ReviewRequestValid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReviewRequestValid": {
+      "main": [
+        [
+          {
+            "node": "LoadProposalForReview",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ShowReviewBlocked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LoadProposalForReview": {
+      "main": [
+        [
+          {
+            "node": "LoadOpportunityForReview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LoadOpportunityForReview": {
+      "main": [
+        [
+          {
+            "node": "EvaluateReviewGate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EvaluateReviewGate": {
+      "main": [
+        [
+          {
+            "node": "IsReviewAllowed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsReviewAllowed": {
+      "main": [
+        [
+          {
+            "node": "UpdateProposalApproval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ShowReviewBlocked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateProposalApproval": {
+      "main": [
+        [
+          {
+            "node": "UpdateOpportunityApproval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateOpportunityApproval": {
+      "main": [
+        [
+          {
+            "node": "SyncLeadCRMOnReview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SyncLeadCRMOnReview": {
+      "main": [
+        [
+          {
+            "node": "SaveApprovalLog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveApprovalLog": {
+      "main": [
+        [
+          {
+            "node": "DecisionApprovedForDocuments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DecisionApprovedForDocuments": {
+      "main": [
+        [
+          {
+            "node": "ApprovedDocumentHandoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ShowReviewSaved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ApprovedDocumentHandoff": {
+      "main": [
+        [
+          {
+            "node": "Call 'P02 | Contract & Invoice Automation'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ShowReviewSaved": {
+      "main": [
+        []
+      ]
+    },
+    "Call 'P02 | Contract & Invoice Automation'": {
+      "main": [
+        [
+          {
+            "node": "ShowReviewSaved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ShowDocumentDraftFailed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

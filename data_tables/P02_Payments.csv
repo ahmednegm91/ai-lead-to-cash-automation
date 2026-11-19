@@ -1,0 +1,2 @@
+﻿payment_id,invoice_id,quote_id,amount_usd,currency,payment_method,payment_reference,paid_at,recorded_by,recorded_at,verification_status,status
+SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,0.01,USD,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,SAMPLE_DELETE_ME,sample_only
